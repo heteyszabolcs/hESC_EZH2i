@@ -112,7 +112,7 @@ MotifPlot(
 )
 dev.off()
 
-## motif analysis on the coembedded scATAC-Seq samples (treated VS. non-treated)
+## motif analysis in the coembedded scATAC-Seq samples (treated VS. non-treated)
 trt_vs_nt_peaks = FindMarkers(
   object = coembed_seurat,
   ident.1 = "EZH2i_7D_scATAC_Seq",
@@ -142,8 +142,8 @@ trt_vs_nt_enriched_motifs = FindMotifs(
 trt_vs_nt_top_enriched_motifs = trt_vs_nt_enriched_motifs %>% arrange(p.adjust) %>% rownames %>% head(12)
 trt_elc_candidates = trt_vs_nt_enriched_motifs %>% dplyr::filter(p.adjust < 0.05, fold.enrichment > 2) %>% pull(motif.name)
 
-
 ## visaulizations
+# scatter
 volc_input = trt_vs_nt_enriched_motifs %>% mutate(group = case_when(
   fold.enrichment > 0.25 & p.adjust < 0.05 ~ "up", .default = "unaltered"
 )) %>%
@@ -211,6 +211,7 @@ ggsave(
   device = "pdf"
 )
 
+# motif logos
 require("ggseqlogo")
 pdf(
   file = "../results/motif_analysis/trt_ELC_vs_nt_ELC-top_motif_logos.pdf",

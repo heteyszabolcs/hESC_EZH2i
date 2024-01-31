@@ -7,14 +7,18 @@ suppressPackageStartupMessages({
   library("glue")
 })
 
+# if returns sparse matrix error install it from source:
 #devtools::install_github("ge11232002/TFBSTools")
 
+# chromVar Nature paper: https://www.nature.com/articles/nmeth.4401
+
+# read objects
 coembed_seurat = readRDS("../results/scATAC-Seq/hESC_scATAC_nt_trt_coembedded.Rds")
 coembed_motif = readRDS("../results/motif_analysis/trt_nt_coembed_scATAC-motif.Rds")
 coembed_seurat[["motifs"]] = coembed_motif
 DefaultAssay(object = coembed_seurat) = "peaks"
 
-
+# keep only valid GRanges strings
 valid_feats = which(seqnames(coembed_seurat[['peaks']]@ranges) %in% standardChromosomes(coembed_seurat[['peaks']]@ranges))
 coembed_seurat = coembed_seurat[valid_feats, ]
 coembed_seurat = RunChromVAR(
@@ -23,8 +27,8 @@ coembed_seurat = RunChromVAR(
   assay = "motifs"
 )
 
+# TF activity marker analysis
 DefaultAssay(coembed_seurat) = 'chromvar'
-
 trt_vs_nt_ELC_diff_activity = FindMarkers(
   object = coembed_seurat,
   ident.1 = "EZH2i_7D_scATAC_Seq",
@@ -37,6 +41,7 @@ trt_vs_nt_ELC_diff_activity = FindMarkers(
 
 trt_vs_nt_ELC_top_activities = trt_vs_nt_ELC_diff_activity %>% arrange(desc(avg_diff)) %>% rownames %>% head(12)
 
+# motif logos
 require("ggseqlogo")
 pdf(
   file = "../results/motif_analysis/trt_ELC_vs_nt_ELC-top_chromVar_act.pdf",

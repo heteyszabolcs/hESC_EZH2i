@@ -7,6 +7,8 @@ suppressPackageStartupMessages({
   library("ggseqlogo")
 })
 
+# if returns sparse matrix error install it from source:
+#devtools::install_github("ge11232002/TFBSTools")
 
 # source: https://stuartlab.org/signac/articles/motif_vignette.html
 
@@ -26,32 +28,31 @@ saveRDS(coembed, "../results/scATAC-Seq/hESC_scATAC_nt_trt_coembedded.Rds")
 
 library("JASPAR2020")
 library("TFBSTools")
-# PFMs
+# PFMs (JASPAR2020)
 pfm = getMatrixSet(
   x = JASPAR2020,
   opts = list(collection = "CORE", tax_group = 'vertebrates', all_versions = FALSE)
 )
 
-# add motif informations
 # EZH2i 7D treated
-# atac_trt = AddMotifs(
-#   object = atac_trt[["peaks"]],
-#   genome = BSgenome.Hsapiens.UCSC.hg38,
-#   pfm = pfm
-# )
-# 
-# saveRDS(atac_trt, file = "../results/motif_analysis/trt_scATAC-motif.Rds")
-# 
-# # non-treated
-# atac_nt = AddMotifs(
-#   object = atac_nt[["peaks"]],
-#   genome = BSgenome.Hsapiens.UCSC.hg38,
-#   pfm = pfm
-# )
-# 
-# saveRDS(atac_nt, file = "../results/motif_analysis/nt_scATAC-motif.Rds")
+atac_trt = AddMotifs(
+  object = atac_trt[["peaks"]],
+  genome = BSgenome.Hsapiens.UCSC.hg38,
+  pfm = pfm
+)
 
-# coembed
+saveRDS(atac_trt, file = "../results/motif_analysis/trt_scATAC-motif.Rds")
+
+# non-treated
+atac_nt = AddMotifs(
+  object = atac_nt[["peaks"]],
+  genome = BSgenome.Hsapiens.UCSC.hg38,
+  pfm = pfm
+)
+
+saveRDS(atac_nt, file = "../results/motif_analysis/nt_scATAC-motif.Rds")
+
+# coembedded scATAC-Seq
 coembed = AddMotifs(
   object = coembed[["peaks"]],
   genome = BSgenome.Hsapiens.UCSC.hg38,
