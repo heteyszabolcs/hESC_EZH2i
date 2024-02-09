@@ -18,12 +18,47 @@ result_folder = "../results/scRNA-Seq/"
 
 # hESC scRNA-Seq data
 counts = readRDS("../data/scRNA-Seq/Nerges.counts.filter.rds")
+print(paste0("Total number of cells: ", length(unique(colnames(counts)))))
 
 # keeping ELC cells, nontreated and D7 EZH2i treated
 meta = readRDS("../data/scRNA-Seq/Nerges.meta.filter.rds")
 meta = meta %>% dplyr::filter(cluster_EML != "Undef")
 meta = meta %>% dplyr::filter(cellType == "EZH2i_Naive_WT" | cellType == "EZH2i_Naive_D7")
 counts = counts[,meta$cell]
+
+# explore cell annotations
+nt_cell_types = meta %>% dplyr::filter(cellType == "EZH2i_Naive_WT") %>% 
+  group_by(cluster_EML) %>% count() %>% mutate(sample = "non-treated naive")
+trt_cell_types = meta %>% dplyr::filter(cellType == "EZH2i_Naive_D7") %>% 
+  group_by(cluster_EML) %>% count()  %>% mutate(sample = "EZH2i 7D naive")
+cell_types = rbind(nt_cell_types, trt_cell_types)
+
+order = factor(cell_types$cluster_EML, levels = c("ELC", "MeLC", "TLC", "AMLC", "HLC"))
+order2 = factor(cell_types$sample, levels = c("non-treated naive", "EZH2i 7D naive"))
+ggplot(cell_types, aes(x = order, y = n, fill = order2)) +
+  geom_bar(stat="identity", position=position_dodge(), color = "black") +
+  scale_fill_manual(values = c("#bdbdbd", "#fec44f")) +
+  ylim(0, 1200) +
+  labs(
+    title = "scRNA-Seq annotations - naive subset",
+    x = "",
+    y = "cell count",
+    fill = ""
+  ) +
+  theme_classic() +
+  theme(
+    text = element_text(size = 9),
+    plot.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_text(size = 7, color = "black"),
+    axis.text.y = element_text(size = 7, color = "black")
+  ) 
+
+ggsave(
+  glue("{result_folder}scRNA_Seq_naive_annotations-bar.pdf"),
+  plot = last_plot(),
+  width = 5,
+  height = 4
+)
 
 # read into Seurat
 seurat_rna = CreateSeuratObject(counts = counts, project = "scRNA_EZH2i", min.cells = 3, min.features = 200)

@@ -23,6 +23,18 @@ atac_nt_ds = subset(x = atac_nt, downsample = 100)
 atac_nt_ds_elc = subset(x = atac_nt_ds, subset = predicted.id == "ELC")
 atac_nt_ds_elc@meta.data = atac_nt_ds_elc@meta.data %>% mutate(orig.ident = "non_trt_scATAC_Seq")
 
+atac_nt_ds_elc_barcodes = tibble(V1 = rownames(atac_nt_ds_elc@meta.data), 
+                                 V2 = "non_trt_ELC_scATAC_Seq")
+write_tsv(atac_nt_ds_elc_barcodes, 
+          "../results/Seurat_integration/scATAC_annotation/nt_scATAC_ELC_downs_barcodes.tsv",
+          col_names = FALSE)
+atac_trt_ds_elc_barcodes = tibble(V1 = rownames(atac_trt_ds_elc@meta.data), 
+                                 V2 = "EZH2i_7D_ELC_scATAC_Seq")
+write_tsv(atac_trt_ds_elc_barcodes, 
+          "../results/Seurat_integration/scATAC_annotation/trt_scATAC_ELC_downs_barcodes.tsv",
+          col_names = FALSE)
+
+
 coembed = merge(x = atac_nt_ds_elc, y = atac_trt_ds_elc)
 saveRDS(coembed, "../results/scATAC-Seq/hESC_scATAC_nt_trt_coembedded.Rds")
 

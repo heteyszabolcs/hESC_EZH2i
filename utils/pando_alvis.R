@@ -18,20 +18,40 @@ suppressPackageStartupMessages({
 # handling v4 Seurat objects
 options(Seurat.object.assay.version = "v4")
 
+# result folder
+result_folder = "../results/GRN/Pando/chromVAR_TOBIAS_candidates/"
+
 # candidates
-candidate_tfs = fread("../data/GRN/candidate_tfs-Tobias_results.txt")
-candidate_tfs = candidate_tfs %>% pull(candidate_TF) %>% unique 
+tobias_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
+tobias_tfs = tobias_tfs %>% pull(candidate_TF) %>% unique 
+
+chromvar_enrichments = fread("../data/GRN/ChromVar_TOBIAS_trt_ELC_vs_nt_ELC-sign_genes.txt")
+chromvar_enrichments = chromvar_enrichments %>% pull(gene_name) %>% unique 
 
 # get annotation
 annotation = readRDS("../results/EnsDB_V86_annotation.Rds")
 #saveRDS(annotation, "../results/EnsDB_V86_annotation.Rds")
 
 # knn pseudocell table for mimicking coupled multiome sequencing
-nt_pseudo = fread("../results/Seurat_integration/nt_pseudocell_alignment.tsv")
-nt_pseudo = nt_pseudo %>% distinct(id2, .keep_all = TRUE) # we should find out a ranking rather than distinct function!
+# nt_pseudo_x = fread("../results/Seurat_integration/nt_pseudocell_alignment.tsv")
+# nt_pseudo = nt_pseudo %>% distinct(id2, .keep_all = TRUE) 
 
-trt_pseudo = fread("../results/Seurat_integration/trt_pseudocell_alignment.tsv")
-trt_pseudo = trt_pseudo %>% distinct(id2, .keep_all = TRUE) # we should find out a ranking rather than distinct function!
+# trt_pseudo = fread("../results/Seurat_integration/trt_pseudocell_alignment.tsv")
+# trt_pseudo = trt_pseudo %>% distinct(id2, .keep_all = TRUE) 
+
+# anchor score based pseudocells - FindTransferAnchors function 
+nt_pseudo = fread("../results/Seurat_integration/nt_anchor_matrix.tsv")
+nt_pseudo = nt_pseudo %>% dplyr::filter(score >= 0.3) %>% 
+  dplyr::select(id1 = anchor1_barcode, id2 = anchor2_barcode)  %>% 
+  distinct(id2, .keep_all = TRUE) %>% 
+  distinct(id1, .keep_all = TRUE)
+  
+
+trt_pseudo = fread("../results/Seurat_integration/trt_anchor_matrix.tsv")
+trt_pseudo = trt_pseudo %>% dplyr::filter(score >= 0.3) %>% 
+  dplyr::select(id1 = anchor1_barcode, id2 = anchor2_barcode)  %>% 
+  distinct(id2, .keep_all = TRUE) %>% 
+  distinct(id1, .keep_all = TRUE)
 
 # hESC scRNA-Seq data
 nt_counts = readRDS("../data/scRNA-Seq/Nerges.counts.filter.rds")
@@ -76,8 +96,8 @@ trt_rna = CreateSeuratObject(counts = trt_counts, project = "scRNA_EZH2i",
 
 ## create scATAC-Seq object
 # filter barcodes by pseudocell technique
-nt_modified_fragments = "../data/scATAC-Seq/nt_fragments_pseudocells.tsv.gz"
-trt_modified_fragments = "../data/scATAC-Seq/trt_fragments_pseudocells.tsv.gz"
+nt_modified_fragments = "../data/scATAC-Seq/hESC_NT/nt_fragments_pseudocells.tsv.gz"
+trt_modified_fragments = "../data/scATAC-Seq/hESC_EZH2i_7d/trt_fragments_pseudocells.tsv.gz"
 
 FilterCells(
   "../data/scATAC-Seq/hESC_NT/fragments.tsv.gz",
@@ -87,7 +107,7 @@ FilterCells(
 )
 
 FilterCells(
-  "../data/scATAC-Seq/hESC_NT/fragments.tsv.gz",
+  "../data/scATAC-Seq/hESC_EZH2i_7d/fragments.tsv.gz",
   trt_ids,
   outfile = trt_modified_fragments,
   verbose = TRUE
@@ -145,8 +165,8 @@ trt_coembed = FindTopFeatures(trt_coembed, min.cutoff = 'q0', assay = "peaks")
 trt_coembed = RunSVD(trt_coembed, assay = "peaks")
 
 # export PANDO input object
-saveRDS(nt_coembed, "../results/GRN/Pando/nt_Pando_input.Rds")
-saveRDS(trt_coembed, "../results/GRN/Pando/trt_Pando_input.Rds")
+saveRDS(nt_coembed, paste0(result_folder, "nt_Pando_input.Rds"))
+saveRDS(trt_coembed, paste0(result_folder, "trt_Pando_input.Rds"))
 
 #data('phastConsElements20Mammals.UCSC.hg38')
 
@@ -205,10 +225,10 @@ trt_grn_motif = find_motifs(
 )
 
 # export intermediate object
-saveRDS(nt_grn_motif, "../results/GRN/Pando/nt_Pando_findmotif.Rds")
+saveRDS(nt_grn_motif, paste0(result_folder, "nt_Pando_findmotif.Rds"))
 nt_grn_motif = readRDS( "../results/GRN/Pando/nt_Pando_findmotif.Rds")
 
-saveRDS(trt_grn_motif, "../results/GRN/Pando/trt_Pando_findmotif.Rds")
+saveRDS(trt_grn_motif, paste0(result_folder, "trt_Pando_findmotif.Rds"))
 trt_grn_motif = readRDS( "../results/GRN/Pando/trt_Pando_findmotif.Rds")
 
 # 3.) infer gene regulatory network (long run!!!)
@@ -223,28 +243,28 @@ print(trt_var_genes)
 nt_grn = infer_grn(
   nt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = nt_var_genes,
-  parallel = TRUE
+  genes = chromvar_enrichments,
+  parallel = FALSE
 )
 
 trt_grn = infer_grn(
   trt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = trt_var_genes,
-  parallel = TRUE
+  genes = chromvar_enrichments,
+  parallel = FALSE
 )
 
 # export intermediate object
-saveRDS(nt_grn, "../results/GRN/Pando/nt_Pando_GRN.Rds")
-saveRDS(trt_grn, "../results/GRN/Pando/trt_Pando_GRN.Rds")
+saveRDS(nt_grn, paste0(result_folder, "nt_Pando_GRN.Rds"))
+saveRDS(trt_grn, paste0(result_folder, "trt_Pando_GRN.Rds"))
 
 GetNetwork(nt_grn)
 nt_coefs = coef(nt_grn)
-write_tsv(nt_coefs, "../results/GRN/Pando/nt_Pando_GRN_coefficients.tsv")
+write_tsv(nt_coefs, paste0(result_folder, "nt_Pando_GRN_coefficients.tsv"))
 
 GetNetwork(trt_grn)
 trt_coefs = coef(trt_grn)
-write_tsv(trt_coefs, "../results/GRN/Pando/trt_Pando_GRN_coefficients.tsv")
+write_tsv(trt_coefs, paste0(result_folder, "trt_Pando_GRN_coefficients.tsv"))
 
 # 3.) Module discovery
 nt_modules = find_modules(
@@ -257,7 +277,7 @@ nt_modules = find_modules(
 
 nt_module_outputs = NetworkModules(nt_modules) 
 nt_module_meta = nt_module_outputs@meta
-write_tsv(nt_module_meta, "../results/GRN/Pando/nt_Pando_GRN_modules.tsv")
+write_tsv(nt_module_meta, paste0(result_folder, "nt_Pando_GRN_modules.tsv"))
 
 trt_modules = find_modules(
   trt_grn, 
@@ -269,22 +289,34 @@ trt_modules = find_modules(
 
 trt_module_outputs = NetworkModules(trt_modules) 
 trt_module_meta = trt_module_outputs@meta
-write_tsv(trt_module_meta, "../results/GRN/Pando/nt_Pando_GRN_modules.tsv")
+write_tsv(trt_module_meta, paste0(result_folder, "nt_Pando_GRN_modules.tsv"))
 
 # 4.) Visualizations
 # goodness-of-fit metrics
-plot_gof(nt_modules, point_size=3)
 pdf(
-  file = "../results/GRN/Pando/nt_candidate_tfs-module_metrics_plot.pdf",
+  file = paste0(result_folder, "nt_candidate_tfs-goodness_of_fits.pdf"),
+  width = 4,
+  height = 4
+)
+plot_gof(nt_modules, point_size=3)
+dev.off()
+pdf(
+  file = paste0(result_folder, "nt_candidate_tfs-module_metrics_plot.pdf"),
   width = 12,
   height = 6
 )
 plot_module_metrics(nt_modules)
 dev.off()
 
-plot_gof(trt_modules, point_size=3)
 pdf(
-  file = "../results/GRN/Pando/trt_candidate_tfs-module_metrics_plot.pdf",
+  file = paste0(result_folder, "trt_candidate_tfs-goodness_of_fits.pdf"),
+  width = 4,
+  height = 4
+)
+plot_gof(trt_modules, point_size=3)
+dev.off()
+pdf(
+  file = paste0(result_folder, "trt_candidate_tfs-module_metrics_plot.pdf"),
   width = 12,
   height = 6
 )
@@ -293,12 +325,11 @@ dev.off()
 
 # network
 detach("package:BSgenome.Hsapiens.UCSC.hg38", unload=TRUE)
-detach("package:EnsDb.Hsapiens.v86", unload=TRUE)
 nt_network_vis = get_network_graph(nt_modules, umap_method = "none")
 #network_vis = RunUMAP(object = network_vis, reduction = 'lsi', dims = 2:30, assay = "peaks")
 #network_vis = RunUMAP(object = network_vis, reduction = 'lsi', dims = 2:30, assay = "RNA")
 pdf(
-  file = "../results/GRN/Pando/nt_candidate_tfs-network_grap-fr.pdf",
+  file = paste0(result_folder, "nt_candidate_tfs-network_grap-fr.pdf"),
   width = 6,
   height = 6
 )
@@ -307,7 +338,7 @@ dev.off()
 
 trt_network_vis = get_network_graph(trt_modules, umap_method = "none")
 pdf(
-  file = "../results/GRN/Pando/trt_candidate_tfs-network_grap-fr.pdf",
+  file = paste0(result_folder, "trt_candidate_tfs-network_grap-fr.pdf"),
   width = 6,
   height = 6
 )

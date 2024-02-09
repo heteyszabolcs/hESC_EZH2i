@@ -32,7 +32,7 @@ DefaultAssay(atac_trt) = "GA"
 
 ### non-treated workflow ###
 # scRNA-Seq (naive ELC cells)
-rna = "../results/scRNA-Seq/hESC_EZH2i_scRNA_Seq-ELC.Rds"
+rna = "../results/scRNA-Seq/hESC_EZH2i_scRNA_Seq.Rds"
 rna = readRDS(rna)
 
 # naive set
@@ -43,6 +43,10 @@ naive_nt_rna = subset(naive_rna, subset = cell %in% naive_nt_rna)
 naive_trt_rna = naive_rna@meta.data %>% dplyr::filter(str_detect(SID, "Naive_D7")) %>% pull(cell)
 naive_trt_rna = subset(naive_rna, subset = cell %in% naive_trt_rna)
 rm(rna)
+
+# ELCs
+naive_trt_elcs = naive_trt_rna@meta.data %>% dplyr::filter(cluster_EML == "ELC") %>% rownames
+naive_nt_elcs = naive_nt_rna@meta.data %>% dplyr::filter(cluster_EML == "ELC") %>% rownames
 
 dim_eml = DimPlot(object = naive_rna, group.by = "SID", label = TRUE) + 
   xlim(-12, 12) +
@@ -68,6 +72,14 @@ nt_anchors = FindTransferAnchors(
   query.assay = "GA",
   reduction = 'cca'
 )
+
+# extract anchor matrix of AnchorSet object
+nt_anchor_mat = as_tibble(nt_anchors@anchors)
+nt_anchor_mat = nt_anchor_mat %>%
+  mutate(anchor1_barcode = colnames(naive_nt_rna@assays$RNA@counts)[nt_anchor_mat$cell1]) %>%
+  mutate(anchor2_barcode = colnames(atac_nt@assays$GA@counts)[nt_anchor_mat$cell2]) %>% 
+  dplyr::filter(anchor1_barcode %in% naive_nt_elcs)
+write_tsv(nt_anchor_mat, glue("{result_folder}nt_anchor_matrix.tsv"))
 
 nt_predicted.labels = TransferData(
   anchorset = nt_anchors,
@@ -221,6 +233,14 @@ trt_anchors = FindTransferAnchors(
   query.assay = "GA",
   reduction = 'cca'
 )
+
+# extract anchor matrix of AnchorSet object
+trt_anchor_mat = as_tibble(trt_anchors@anchors)
+trt_anchor_mat = trt_anchor_mat %>%
+  mutate(anchor1_barcode = colnames(naive_trt_rna@assays$RNA@counts)[trt_anchor_mat$cell1]) %>%
+  mutate(anchor2_barcode = colnames(atac_trt@assays$GA@counts)[trt_anchor_mat$cell2]) %>% 
+  dplyr::filter(anchor1_barcode %in% naive_trt_elcs)
+write_tsv(trt_anchor_mat, glue("{result_folder}trt_anchor_matrix.tsv"))
 
 trt_predicted.labels = TransferData(
   anchorset = trt_anchors,

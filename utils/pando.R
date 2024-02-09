@@ -31,16 +31,31 @@ options(Seurat.object.assay.version = "v4")
 candidate_tfs = fread("../data/GRN/candidate_tfs-Tobias_results.txt")
 candidate_tfs = candidate_tfs %>% pull(candidate_TF) %>% unique 
 
+chromvar_enrichments = c("SMAD2", "SMAD3", "FOSL2", "FOS", "JUND", "FOSL1", "JUN", "JUNB", "BATF")
+
 # get annotation
 annotation = GetGRangesFromEnsDb(ensdb = EnsDb.Hsapiens.v86)
 #saveRDS(annotation, "../results/EnsDB_V86_annotation.Rds")
 
 # knn pseudocell table for mimicking coupled multiome sequencing
-nt_pseudo = fread("../results/Seurat_integration/nt_pseudocell_alignment.tsv")
-nt_pseudo = nt_pseudo %>% distinct(id2, .keep_all = TRUE) # we should find out a ranking rather than distinct function!
+# nt_pseudo_x = fread("../results/Seurat_integration/nt_pseudocell_alignment.tsv")
+# nt_pseudo = nt_pseudo %>% distinct(id2, .keep_all = TRUE) 
 
-trt_pseudo = fread("../results/Seurat_integration/trt_pseudocell_alignment.tsv")
-trt_pseudo = trt_pseudo %>% distinct(id2, .keep_all = TRUE) # we should find out a ranking rather than distinct function!
+# trt_pseudo = fread("../results/Seurat_integration/trt_pseudocell_alignment.tsv")
+# trt_pseudo = trt_pseudo %>% distinct(id2, .keep_all = TRUE) 
+
+# anchor score based pseudocells - FindTransferAnchors function 
+nt_pseudo = fread("../results/Seurat_integration/nt_anchor_matrix.tsv")
+nt_pseudo = nt_pseudo %>% dplyr::filter(score >= 0.3) %>% 
+  dplyr::select(id1 = anchor1_barcode, id2 = anchor2_barcode)  %>% 
+  distinct(id2, .keep_all = TRUE) %>% 
+  distinct(id1, .keep_all = TRUE)
+
+trt_pseudo = fread("../results/Seurat_integration/trt_anchor_matrix.tsv")
+trt_pseudo = trt_pseudo %>% dplyr::filter(score >= 0.3) %>% 
+  dplyr::select(id1 = anchor1_barcode, id2 = anchor2_barcode)  %>% 
+  distinct(id2, .keep_all = TRUE) %>% 
+  distinct(id1, .keep_all = TRUE)
 
 # hESC scRNA-Seq data
 nt_counts = readRDS("../data/scRNA-Seq/Nerges.counts.filter.rds")
@@ -95,7 +110,7 @@ FilterCells(
 )
 
 FilterCells(
-  "../data/scATAC-Seq/hESC_NT/fragments.tsv.gz",
+  "../data/scATAC-Seq/hESC_EZH2i_7d/fragments.tsv.gz",
   trt_ids,
   outfile = trt_modified_fragments,
   verbose = TRUE
@@ -113,8 +128,6 @@ saveRDS(nt_atac_counts, file = "../results/scATAC-Seq/nt_ATAC-filtered_peak_bc_m
 trt_atac_counts = Read10X_h5(filename = "../data/scATAC-Seq/hESC_EZH2i_7d/filtered_peak_bc_matrix.h5")
 trt_atac_counts = trt_atac_counts[,trt_ids]
 saveRDS(trt_atac_counts, file = "../results/scATAC-Seq/trt_ATAC-filtered_peak_bc_matrix_h5_object.Rds")
-
-
 
 nt_chrom_assay = CreateChromatinAssay(
   counts = nt_atac_counts,
@@ -233,14 +246,14 @@ var_genes = FindVariableFeatures(nt_coembed[["RNA"]])@var.features
 nt_grn = infer_grn(
   nt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = candidate_tfs,
+  genes = chromvar_enrichments,
   parallel = TRUE
 )
 
 trt_grn = infer_grn(
   trt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = candidate_tfs,
+  genes = chromvar_enrichments,
   parallel = TRUE
 )
 
