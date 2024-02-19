@@ -28,7 +28,7 @@ suppressPackageStartupMessages({
 options(Seurat.object.assay.version = "v4")
 
 # candidates
-candidate_tfs = fread("../data/GRN/candidate_tfs-Tobias_results.txt")
+candidate_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
 candidate_tfs = candidate_tfs %>% pull(candidate_TF) %>% unique 
 
 chromvar_enrichments = c("SMAD2", "SMAD3", "FOSL2", "FOS", "JUND", "FOSL1", "JUN", "JUNB", "BATF")

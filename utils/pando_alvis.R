@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 options(Seurat.object.assay.version = "v4")
 
 # result folder
-result_folder = "../results/GRN/Pando/chromVAR_TOBIAS_candidates/"
+result_folder = "../results/GRN/Pando/scRNASeq_trt_elc_vs_nt_elc_sign_ups_cands/"
 
 # candidates
 tobias_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
@@ -27,6 +27,12 @@ tobias_tfs = tobias_tfs %>% pull(candidate_TF) %>% unique
 
 chromvar_enrichments = fread("../data/GRN/ChromVar_TOBIAS_trt_ELC_vs_nt_ELC-sign_genes.txt")
 chromvar_enrichments = chromvar_enrichments %>% pull(gene_name) %>% unique 
+
+scrna_trt_elc_vs_nt_elc_sign_up = fread("../data/GRN/scRNASeq-trt_ELC_vs_nt_ELC-sign_up_genes.txt")
+scrna_trt_elc_vs_nt_elc_sign_up = scrna_trt_elc_vs_nt_elc_sign_up$gene
+
+# hg38 cis-regulatory elements from SCREEN (GenomicRanges object)
+data('SCREEN.ccRE.UCSC.hg38')
 
 # get annotation
 annotation = readRDS("../results/EnsDB_V86_annotation.Rds")
@@ -189,14 +195,16 @@ nt_init_grn = initiate_grn(
   nt_coembed,
   rna_assay = "RNA",
   peak_assay = "peaks",
-  exclude_exons = FALSE
+  exclude_exons = FALSE,
+  regions = SCREEN.ccRE.UCSC.hg38
 )
 
 trt_init_grn = initiate_grn(
   trt_coembed,
   rna_assay = "RNA",
   peak_assay = "peaks",
-  exclude_exons = FALSE
+  exclude_exons = FALSE,
+  regions = SCREEN.ccRE.UCSC.hg38
 )
 
 
@@ -243,14 +251,14 @@ print(trt_var_genes)
 nt_grn = infer_grn(
   nt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = chromvar_enrichments,
+  genes = scrna_trt_elc_vs_nt_elc_sign_up,
   parallel = FALSE
 )
 
 trt_grn = infer_grn(
   trt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = chromvar_enrichments,
+  genes = scrna_trt_elc_vs_nt_elc_sign_up,
   parallel = FALSE
 )
 

@@ -10,7 +10,7 @@ suppressPackageStartupMessages({
   library("GenomeInfoDb")
   library("ggpubr")
   library("EnsDb.Hsapiens.v86")
-  #library("DoubletFinder")
+  library("ggrepel")
 })
 
 # export folder
@@ -166,10 +166,395 @@ tlc_vs_elc = FindMarkers(seurat_rna,
 tlc_vs_elc_sign = tlc_vs_elc %>% dplyr::filter(abs(avg_log2FC) > 2 & p_val_adj < 0.05)
 
 melc_vs_elc = FindMarkers(seurat_rna,
-                         ident.1 = "TLC",
-                         ident.2 = "MeLC",
-                         group.by = "cluster_EML")
+                         ident.1 = "MeLC",
+                         ident.2 = "ELC",
+                         group.by = "cluster_EML",
+                        )
 melc_vs_elc_sign = melc_vs_elc %>% dplyr::filter(abs(avg_log2FC) > 2 & p_val_adj < 0.05)
 
+# marker genes between EZH2i treated ELCs and non-treated ELCs
+elc_seurat_rna = subset(x = seurat_rna, subset = cluster_EML == "ELC")
+trt_elc_vs_nt_elc = FindMarkers(elc_seurat_rna,
+                          ident.1 = "EZH2i_Naive_D7_10X",
+                          ident.2 = "EZH2i_Naive_WT_10X",
+                          group.by = "SID",
+                          logfc.threshold = 0.2)
+trt_elc_vs_nt_elc$gene = rownames(trt_elc_vs_nt_elc)
 
+trt_elc_vs_nt_elc_sign = trt_elc_vs_nt_elc %>% 
+  dplyr::filter(abs(avg_log2FC) > 2 & p_val_adj < 0.05) 
+trt_elc_vs_nt_elc_sign_up = trt_elc_vs_nt_elc %>% 
+  dplyr::filter(avg_log2FC > 2 & p_val_adj < 0.05) %>% dplyr::select(gene)
+write_tsv(trt_elc_vs_nt_elc_sign_up, "../data/GRN/scRNASeq-trt_ELC_vs_nt_ELC-sign_up_genes.txt")
 
+FeaturePlot(
+  elc_seurat_rna,
+  features = trt_elc_vs_nt_elc_sign %>% 
+    arrange(desc(avg_log2FC)) %>% 
+    top_n(6, wt = avg_log2FC) %>% pull(gene),
+  dims = c(1, 2)) 
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-top6_fc_featurePlots.png"),
+  plot = last_plot(),
+  width = 8,
+  height = 8,
+  dpi = 300,
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-top6_fc_featurePlots.pdf"),
+  plot = last_plot(),
+  width = 8,
+  height = 8,
+  device = "pdf"
+)
+
+FeaturePlot(
+  elc_seurat_rna,
+  features = trt_elc_vs_nt_elc_sign %>% 
+    dplyr::filter(avg_log2FC > 0) %>% 
+    arrange(p_val_adj) %>% 
+    top_n(-6, wt = p_val_adj) %>% pull(gene),
+  dims = c(1, 2), cols = c("#ece7f2", "#de2d26"))
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-top6_adjp_featurePlots.png"),
+  plot = last_plot(),
+  width = 8,
+  height = 8,
+  dpi = 300,
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-top6_adjp_featurePlots.pdf"),
+  plot = last_plot(),
+  width = 8,
+  height = 8,
+  device = "pdf"
+)
+
+# these TFs are coming from Pando GRN predictions
+# ChromVar/TOBIAS inputs
+interesting_up_tfs = c("CREB3", "HMGXB4", "JUNB", "ATF7", "HIC2", "CREB1", "FOSL2", "TFAP2C")
+interesting_down_tfs = c("SALL4", "ZNF589", "CREM", "TCF3", "GABPA", "MAFG", "FOSL2", "RUNX1", 
+                         "ERF", "NFYA", "ZNF681")
+trt_elc_vs_nt_elc %>% dplyr::filter(gene %in% interesting_up_tfs)
+trt_elc_vs_nt_elc %>% dplyr::filter(gene %in% interesting_down_tfs)
+# FindVariables top 100 inputs
+interesting_up_tfs2 = c("CUX1", "HOXA10", "ZNF891", "KLF9", "SP5", "ZNF33B")
+interesting_down_tfs2 = c("ZNF503", "SALL3", "ZNF22", "SP2", "RARB", "MEIS2")
+trt_elc_vs_nt_elc %>% dplyr::filter(gene %in% interesting_up_tfs2)
+trt_elc_vs_nt_elc %>% dplyr::filter(gene %in% interesting_down_tfs2)
+
+# ChromVar / TOBIAS outputs
+chromvar_tob = read_tsv("../data/GRN/ChromVar_TOBIAS_trt_ELC_vs_nt_ELC-sign_genes.txt") %>% 
+  pull(gene_name)
+
+chromvar_tob_fcs = trt_elc_vs_nt_elc %>% dplyr::filter(gene %in% chromvar_tob)
+
+# visualizations
+volc_input = trt_elc_vs_nt_elc %>% 
+  mutate(group = case_when(
+    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
+    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down", .default = "unaltered"
+  )) %>%
+  mutate(sign_label = case_when(group == "up" ~ gene, 
+                                group == "down" ~ gene, .default = NA))
+labels = volc_input %>% pull(sign_label)
+
+# add color, size, alpha indications
+cols = c("up" = "#fc9272", "down" = "#3182bd", "unaltered" = "grey")
+sizes = c("up" = 4, "down" = 4, "unaltered" = 2)
+alphas = c("up" = 1, "down" = 1, "unaltered" = 0.5)
+
+# EZH2i 7D ELC volcano
+trt_elc_vs_nt_elc_volc = volc_input %>%
+  ggplot(aes(x = avg_log2FC,
+             y = -log10(p_val_adj),
+             fill = group,    
+             size = group,
+             alpha = group)) +
+  ggrastr::geom_point_rast(shape = 21, # Specify shape and colour as fixed local parameters    
+                           colour = "black") +
+  geom_hline(yintercept = -log10(1e-25),
+             linetype = "dashed") +
+  geom_vline(xintercept = 2,
+             linetype = "dashed") +
+  geom_vline(xintercept = -2,
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-4, 4, 1)),  	 
+                     limits = c(-4, 4)) +
+  scale_y_continuous(breaks = c(seq(0, 200, 50)),  	 
+                     limits = c(0, 200)) +
+  labs(
+    title = "EZH2i 7D ELCs vs non-treated ELCs",
+    subtitle = "scRNA-Seq marker analysis",
+    x = "fold enrichment",
+    y = "-log10 adj. p-value",
+    fill = " "
+  ) +
+  guides(alpha = FALSE, size = FALSE, fill = guide_legend(override.aes = list(size = 5))) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    plot.title = element_text(size = 12, face = "bold"),
+    plot.subtitle = element_text(size = 6),
+    axis.text.x = element_text(size = 14, color = "black"),
+    axis.text.y = element_text(size = 14, color = "black"),
+    axis.title.x = element_text(size = 20, color = "black"),
+    axis.title.y = element_text(size = 20, color = "black")
+  ) +
+  geom_text_repel(label = labels, size = 4, max.overlaps = 110, min.segment.length = 0.1) # add labels
+trt_elc_vs_nt_elc_volc
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-volc.png"),
+  plot = trt_elc_vs_nt_elc_volc,
+  width = 10,
+  height = 7,
+  dpi = 300,
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-volc.pdf"),
+  plot = trt_elc_vs_nt_elc_volc,
+  width = 10,
+  height = 7,
+  device = "pdf"
+)
+
+volc_input = trt_elc_vs_nt_elc %>% 
+  mutate(group = case_when(
+    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
+    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down", 
+    gene %in% chromvar_tob ~ "enriched in ChromVar/TOBIAS",
+    .default = "unaltered"
+  )) %>%
+  mutate(sign_label = case_when(group == "enriched in ChromVar/TOBIAS" ~ gene, 
+                                .default = NA))
+
+labels = volc_input %>% pull(sign_label)
+
+# add color, size, alpha indications
+cols = c("up" = "#fc9272", "down" = "#3182bd", "unaltered" = "white", 
+         "enriched in ChromVar/TOBIAS" = "yellow")
+sizes = c("up" = 4, "down" = 4, "unaltered" = 2, "enriched in ChromVar/TOBIAS" = 4)
+alphas = c("up" = 1, "down" = 1, "unaltered" = 0, "enriched in ChromVar/TOBIAS" = 1)
+
+trt_elc_vs_nt_elc_volc_2 = volc_input %>%
+  ggplot(aes(x = avg_log2FC,
+             y = -log10(p_val_adj),
+             fill = group,    
+             size = group,
+             alpha = group)) +
+  ggrastr::geom_point_rast(shape = 21, # Specify shape and colour as fixed local parameters    
+                           colour = "black") +
+  geom_hline(yintercept = -log10(1e-25),
+             linetype = "dashed") +
+  geom_vline(xintercept = 2,
+             linetype = "dashed") +
+  geom_vline(xintercept = -2,
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-4, 4, 1)),  	 
+                     limits = c(-4, 4)) +
+  scale_y_continuous(breaks = c(seq(0, 200, 50)),  	 
+                     limits = c(0, 200)) +
+  labs(
+    title = "EZH2i 7D ELCs vs non-treated ELCs",
+    subtitle = "scRNA-Seq marker analysis",
+    x = "fold enrichment",
+    y = "-log10 adj. p-value",
+    fill = " "
+  ) +
+  guides(alpha = FALSE, size = FALSE, fill = guide_legend(override.aes = list(size = 5))) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    plot.title = element_text(size = 12, face = "bold"),
+    plot.subtitle = element_text(size = 6),
+    axis.text.x = element_text(size = 14, color = "black"),
+    axis.text.y = element_text(size = 14, color = "black"),
+    axis.title.x = element_text(size = 20, color = "black"),
+    axis.title.y = element_text(size = 20, color = "black")
+  ) +
+  geom_text_repel(label = labels, size = 4, max.overlaps = 110, min.segment.length = 0.1) # add labels
+trt_elc_vs_nt_elc_volc_2
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_TOBIAS-volc.png"),
+  plot = trt_elc_vs_nt_elc_volc_2,
+  width = 10,
+  height = 7,
+  dpi = 300,
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_TOBIAS-volc.pdf"),
+  plot = trt_elc_vs_nt_elc_volc_2,
+  width = 10,
+  height = 7,
+  device = "pdf"
+)
+
+volc_input = trt_elc_vs_nt_elc %>% 
+  mutate(group = case_when(
+    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
+    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down", 
+    gene %in% c(interesting_up_tfs, interesting_down_tfs) ~ "TFs by Pando (ChromVar/Tobias)",
+    .default = "unaltered"
+  )) %>%
+  mutate(sign_label = case_when(group == "TFs by Pando (ChromVar/Tobias)" ~ gene, 
+                                .default = NA))
+
+labels = volc_input %>% pull(sign_label)
+
+# add color, size, alpha indications
+cols = c("up" = "#fc9272", "down" = "#3182bd", "unaltered" = "white", 
+         "TFs by Pando (ChromVar/Tobias)" = "#bcbddc")
+sizes = c("up" = 4, "down" = 4, "unaltered" = 2, "TFs by Pando (ChromVar/Tobias)" = 4)
+alphas = c("up" = 1, "down" = 1, "unaltered" = 0, "TFs by Pando (ChromVar/Tobias)" = 1)
+
+trt_elc_vs_nt_elc_volc_3 = volc_input %>%
+  ggplot(aes(x = avg_log2FC,
+             y = -log10(p_val_adj),
+             fill = group,    
+             size = group,
+             alpha = group)) +
+  ggrastr::geom_point_rast(shape = 21, # Specify shape and colour as fixed local parameters    
+                           colour = "black") +
+  geom_hline(yintercept = -log10(1e-25),
+             linetype = "dashed") +
+  geom_vline(xintercept = 2,
+             linetype = "dashed") +
+  geom_vline(xintercept = -2,
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-4, 4, 1)),  	 
+                     limits = c(-4, 4)) +
+  scale_y_continuous(breaks = c(seq(0, 200, 50)),  	 
+                     limits = c(0, 200)) +
+  labs(
+    title = "EZH2i 7D ELCs vs non-treated ELCs",
+    subtitle = "scRNA-Seq marker analysis",
+    x = "fold enrichment",
+    y = "-log10 adj. p-value",
+    fill = " "
+  ) +
+  guides(alpha = FALSE, size = FALSE, fill = guide_legend(override.aes = list(size = 5))) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    plot.title = element_text(size = 12, face = "bold"),
+    plot.subtitle = element_text(size = 6),
+    axis.text.x = element_text(size = 14, color = "black"),
+    axis.text.y = element_text(size = 14, color = "black"),
+    axis.title.x = element_text(size = 20, color = "black"),
+    axis.title.y = element_text(size = 20, color = "black")
+  ) +
+  geom_text_repel(label = labels, size = 4, max.overlaps = 110, min.segment.length = 0.1) # add labels
+trt_elc_vs_nt_elc_volc_3
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_Pando_Chrom-Tob-volc.png"),
+  plot = trt_elc_vs_nt_elc_volc_3,
+  width = 10,
+  height = 7,
+  dpi = 300,
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_Pando_Chrom-Tob-volc.pdf"),
+  plot = trt_elc_vs_nt_elc_volc_3,
+  width = 10,
+  height = 7,
+  device = "pdf"
+)
+
+volc_input = trt_elc_vs_nt_elc %>% 
+  mutate(group = case_when(
+    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
+    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down", 
+    gene %in% c(interesting_up_tfs2, interesting_down_tfs2) ~ "TFs by Pando (FindVars100)",
+    .default = "unaltered"
+  )) %>%
+  mutate(sign_label = case_when(group == "TFs by Pando (FindVars100)" ~ gene, 
+                                .default = NA))
+
+labels = volc_input %>% pull(sign_label)
+
+# add color, size, alpha indications
+cols = c("up" = "#fc9272", "down" = "#3182bd", "unaltered" = "white", 
+         "TFs by Pando (FindVars100)" = "pink")
+sizes = c("up" = 4, "down" = 4, "unaltered" = 2, "TFs by Pando (FindVars100)" = 4)
+alphas = c("up" = 1, "down" = 1, "unaltered" = 0, "TFs by Pando (FindVars100)" = 1)
+
+trt_elc_vs_nt_elc_volc_4 = volc_input %>%
+  ggplot(aes(x = avg_log2FC,
+             y = -log10(p_val_adj),
+             fill = group,    
+             size = group,
+             alpha = group)) +
+  ggrastr::geom_point_rast(shape = 21, # Specify shape and colour as fixed local parameters    
+                           colour = "black") +
+  geom_hline(yintercept = -log10(1e-25),
+             linetype = "dashed") +
+  geom_vline(xintercept = 2,
+             linetype = "dashed") +
+  geom_vline(xintercept = -2,
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-4, 4, 1)),  	 
+                     limits = c(-4, 4)) +
+  scale_y_continuous(breaks = c(seq(0, 200, 50)),  	 
+                     limits = c(0, 200)) +
+  labs(
+    title = "EZH2i 7D ELCs vs non-treated ELCs",
+    subtitle = "scRNA-Seq marker analysis",
+    x = "fold enrichment",
+    y = "-log10 adj. p-value",
+    fill = " "
+  ) +
+  guides(alpha = FALSE, size = FALSE, fill = guide_legend(override.aes = list(size = 5))) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    plot.title = element_text(size = 12, face = "bold"),
+    plot.subtitle = element_text(size = 6),
+    axis.text.x = element_text(size = 14, color = "black"),
+    axis.text.y = element_text(size = 14, color = "black"),
+    axis.title.x = element_text(size = 20, color = "black"),
+    axis.title.y = element_text(size = 20, color = "black")
+  ) +
+  geom_text_repel(label = labels, size = 4, max.overlaps = 110, min.segment.length = 0.1) # add labels
+trt_elc_vs_nt_elc_volc_4
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_Pando_FindVars100-volc.pdf"),
+  plot = trt_elc_vs_nt_elc_volc_4,
+  width = 10,
+  height = 7,
+  device = "pdf"
+)
+
+ggsave(
+  glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC_Pando_FindVars100-volc.png"),
+  plot = trt_elc_vs_nt_elc_volc_4,
+  width = 10,
+  height = 7,
+  dpi = 300,
+)
