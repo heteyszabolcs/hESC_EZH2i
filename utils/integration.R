@@ -76,14 +76,14 @@ nt_anchors = FindTransferAnchors(
 # extract anchor matrix of AnchorSet object
 nt_anchor_mat = as_tibble(nt_anchors@anchors)
 nt_anchor_mat = nt_anchor_mat %>%
-  mutate(anchor1_barcode = colnames(naive_nt_rna@assays$RNA@counts)[nt_anchor_mat$cell1]) %>%
+  mutate(anchor1_barcode = unname(naive_nt_rna$cell)[nt_anchor_mat$cell1]) %>%
   mutate(anchor2_barcode = colnames(atac_nt@assays$GA@counts)[nt_anchor_mat$cell2]) %>% 
   dplyr::filter(anchor1_barcode %in% naive_nt_elcs)
 write_tsv(nt_anchor_mat, glue("{result_folder}nt_anchor_matrix.tsv"))
 
 nt_predicted.labels = TransferData(
   anchorset = nt_anchors,
-  refdata = naive_nt_rna$cellType,
+  refdata = naive_nt_rna$cluster_EML,
   weight.reduction = atac_nt[['lsi']],
   dims = 2:30
 )
@@ -94,7 +94,7 @@ nt_integrated_meta = atac_nt@meta.data
 # new UMAPs upon integration
 umap_rna = DimPlot(
   object = naive_nt_rna,
-  group.by = "cellType",
+  group.by = "cluster_EML",
   label = TRUE,
   repel = TRUE) + 
   xlim(-12, 12) +
@@ -110,6 +110,8 @@ umap_rna = DimPlot(
   ) + NoLegend()
 umap_rna
 
+atac_nt@meta.data$predicted.id = 
+  factor(atac_nt@meta.data$predicted.id, levels = c("ELC", "MeLC", "TLC", "HLC"))
 umap_atac = DimPlot(
   object = atac_nt,
   group.by = "predicted.id",
@@ -125,7 +127,7 @@ umap_atac = DimPlot(
     legend.text = element_text(size = 9),
     axis.text.x = element_text(size = 25, color = "black"),
     axis.text.y = element_text(size = 25, color = "black")
-  ) + NoLegend()
+  )
 umap_atac
 
 umaps_int = ggarrange(umap_rna, umap_atac, ncol = 2)
@@ -237,14 +239,14 @@ trt_anchors = FindTransferAnchors(
 # extract anchor matrix of AnchorSet object
 trt_anchor_mat = as_tibble(trt_anchors@anchors)
 trt_anchor_mat = trt_anchor_mat %>%
-  mutate(anchor1_barcode = colnames(naive_trt_rna@assays$RNA@counts)[trt_anchor_mat$cell1]) %>%
+  mutate(anchor1_barcode = naive_trt_rna$cell[trt_anchor_mat$cell1]) %>%
   mutate(anchor2_barcode = colnames(atac_trt@assays$GA@counts)[trt_anchor_mat$cell2]) %>% 
   dplyr::filter(anchor1_barcode %in% naive_trt_elcs)
 write_tsv(trt_anchor_mat, glue("{result_folder}trt_anchor_matrix.tsv"))
 
 trt_predicted.labels = TransferData(
   anchorset = trt_anchors,
-  refdata = naive_trt_rna$cellType,
+  refdata = naive_trt_rna$cluster_EML,
   weight.reduction = atac_trt[['lsi']],
   dims = 2:30
 )
@@ -258,7 +260,7 @@ trt_integrated_meta = atac_trt@meta.data
 # new UMAPs upon integration
 umap_rna = DimPlot(
   object = naive_trt_rna,
-  group.by = "cellType",
+  group.by = "cluster_EML",
   label = TRUE,
   repel = TRUE) + 
   xlim(-12, 12) +
@@ -274,6 +276,8 @@ umap_rna = DimPlot(
   ) + NoLegend()
 umap_rna
 
+atac_trt@meta.data$predicted.id = 
+  factor(atac_trt@meta.data$predicted.id, levels = c("ELC", "MeLC", "TLC", "AMLC"))
 trt_umap_atac = DimPlot(
   object = atac_trt,
   group.by = "predicted.id",
@@ -289,7 +293,7 @@ trt_umap_atac = DimPlot(
     legend.text = element_text(size = 9),
     axis.text.x = element_text(size = 25, color = "black"),
     axis.text.y = element_text(size = 25, color = "black")
-  )  + NoLegend()
+  )  
 trt_umap_atac
 
 trt_umaps_int = ggarrange(umap_rna, trt_umap_atac)

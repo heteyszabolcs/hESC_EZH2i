@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 options(Seurat.object.assay.version = "v4")
 
 # result folder
-result_folder = "../results/GRN/Pando/scRNASeq_trt_elc_vs_nt_elc_sign_ups_cands/"
+result_folder = "../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/"
 
 # candidates
 tobias_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
@@ -30,6 +30,9 @@ chromvar_enrichments = chromvar_enrichments %>% pull(gene_name) %>% unique
 
 scrna_trt_elc_vs_nt_elc_sign_up = fread("../data/GRN/scRNASeq-trt_ELC_vs_nt_ELC-sign_up_genes.txt")
 scrna_trt_elc_vs_nt_elc_sign_up = scrna_trt_elc_vs_nt_elc_sign_up$gene
+
+var_tfs_of_jaspar_cisbp = fread("../data/GRN/Variable_TFs-Jaspar2024_CISBP.tsv")
+var_tfs_of_jaspar_cisbp = var_tfs_of_jaspar_cisbp$TF_name
 
 # hg38 cis-regulatory elements from SCREEN (GenomicRanges object)
 data('SCREEN.ccRE.UCSC.hg38')
@@ -243,22 +246,24 @@ trt_grn_motif = readRDS( "../results/GRN/Pando/trt_Pando_findmotif.Rds")
 registerDoParallel(4)
 
 # run GRN inference on the most variable scRNA-Seq genes
-nt_var_genes = FindVariableFeatures(nt_coembed[["RNA"]], nfeatures = 100)@var.features
+nt_var_genes = VariableFeatures(FindVariableFeatures(nt_coembed[["RNA"]],
+                                                     nfeatures = 100))
 print(nt_var_genes)
-trt_var_genes = FindVariableFeatures(trt_coembed[["RNA"]], nfeatures = 100)@var.features
+trt_var_genes = VariableFeatures(FindVariableFeatures(trt_coembed[["RNA"]], 
+                                                      nfeatures = 100))
 print(trt_var_genes)
 
 nt_grn = infer_grn(
   nt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = scrna_trt_elc_vs_nt_elc_sign_up,
+  genes = var_tfs_of_jaspar_cisbp,
   parallel = FALSE
 )
 
 trt_grn = infer_grn(
   trt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = scrna_trt_elc_vs_nt_elc_sign_up,
+  genes = var_tfs_of_jaspar_cisbp,
   parallel = FALSE
 )
 

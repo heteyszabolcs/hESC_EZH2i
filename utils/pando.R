@@ -1,21 +1,10 @@
 library("utils")
-
-### PANDO requires special version of Seurat, SeuratObject and Signac
-# remove package versions from .libPath()
-# remove.packages(c("Seurat", "Signac", "SeuratObject"))
-# # 
-# # # Reinstall Pando compatible versions, pre-existing packages can be seen in sessionInfo() output
-# # # source: https://github.com/quadbio/Pando/issues/53
-# remotes::install_version(package = 'Seurat', version = package_version('4.3.0'))
-# install.packages("https://github.com/satijalab/seurat-object/archive/refs/tags/v4.1.4.tar.gz", repo=NULL, type="source")
-# install.packages("https://github.com/stuart-lab/signac/archive/refs/tags/1.11.0.tar.gz", repo=NULL, type="source")
-
 # packages
 suppressPackageStartupMessages({
   library("tidyverse")
-  library("Pando") # Pando requires Seurat V4!!! (e.g. Seurat_4.3.0) and SeuratObject v4
-  library("Seurat") # Seurat v4.3.0
-  library("Signac") # Signac v1.11.0
+  library("Pando") 
+  library("Seurat") 
+  library("Signac") 
   library("GenomicRanges")
   library("EnsDb.Hsapiens.v86")
   library("BSgenome.Hsapiens.UCSC.hg38")
@@ -24,14 +13,21 @@ suppressPackageStartupMessages({
   library("doParallel")
 })
 
-# handling v4 Seurat objects
-options(Seurat.object.assay.version = "v4")
+# result folder
+result_folder = "../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/"
 
 # candidates
-candidate_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
-candidate_tfs = candidate_tfs %>% pull(candidate_TF) %>% unique 
+tobias_tfs = fread("../data/GRN/TOBIAS_bulkATAC-Seq_candidates.txt")
+tobias_tfs = tobias_tfs %>% pull(candidate_TF) %>% unique 
 
-chromvar_enrichments = c("SMAD2", "SMAD3", "FOSL2", "FOS", "JUND", "FOSL1", "JUN", "JUNB", "BATF")
+chromvar_enrichments = fread("../data/GRN/ChromVar_TOBIAS_trt_ELC_vs_nt_ELC-sign_genes.txt")
+chromvar_enrichments = chromvar_enrichments %>% pull(gene_name) %>% unique 
+
+scrna_trt_elc_vs_nt_elc_sign_up = fread("../data/GRN/scRNASeq-trt_ELC_vs_nt_ELC-sign_up_genes.txt")
+scrna_trt_elc_vs_nt_elc_sign_up = scrna_trt_elc_vs_nt_elc_sign_up$gene
+
+var_tfs_of_jaspar_cisbp = fread("../data/GRN/Variable_TFs-Jaspar2024_CISBP.tsv")
+var_tfs_of_jaspar_cisbp = var_tfs_of_jaspar_cisbp$TF_name
 
 # get annotation
 annotation = GetGRangesFromEnsDb(ensdb = EnsDb.Hsapiens.v86)
@@ -171,8 +167,8 @@ trt_coembed = FindTopFeatures(trt_coembed, min.cutoff = 'q0', assay = "peaks")
 trt_coembed = RunSVD(trt_coembed, assay = "peaks")
 
 # export PANDO input object
-saveRDS(nt_coembed, "../results/GRN/Pando/nt_Pando_input.Rds")
-saveRDS(trt_coembed, "../results/GRN/Pando/trt_Pando_input.Rds")
+saveRDS(nt_coembed, glue("{result_folder}nt_Pando_input.Rds"))
+saveRDS(trt_coembed, glue("{result_folder}trt_Pando_input.Rds"))
 
 #data('phastConsElements20Mammals.UCSC.hg38')
 
@@ -231,43 +227,49 @@ trt_grn_motif = find_motifs(
 )
 
 # export intermediate object
-saveRDS(nt_grn_motif, "../results/GRN/Pando/nt_Pando_findmotif.Rds")
-nt_grn_motif = readRDS( "../results/GRN/Pando/nt_Pando_findmotif.Rds")
+saveRDS(nt_grn_motif, glue("{result_folder}nt_Pando_findmotif.Rds"))
+nt_grn_motif = readRDS( glue("{result_folder}nt_Pando_findmotif.Rds"))
 
-saveRDS(trt_grn_motif, "../results/GRN/Pando/trt_Pando_findmotif.Rds")
-trt_grn_motif = readRDS( "../results/GRN/Pando/trt_Pando_findmotif.Rds")
+saveRDS(trt_grn_motif, glue("{result_folder}trt_Pando_findmotif.Rds"))
+trt_grn_motif = readRDS(glue("{result_folder}trt_Pando_findmotif.Rds"))
 
 # 3.) infer gene regulatory network (long run!!!)
 registerDoParallel(4)
 
 # run GRN inference on the most variable scRNA-Seq genes
-var_genes = FindVariableFeatures(nt_coembed[["RNA"]])@var.features
+nt_var_genes = VariableFeatures(FindVariableFeatures(nt_coembed[["RNA"]],
+                                                     nfeatures = 100))
+print(nt_var_genes)
+trt_var_genes = VariableFeatures(FindVariableFeatures(trt_coembed[["RNA"]], 
+                                                      nfeatures = 100))
+print(trt_var_genes)
+
 
 nt_grn = infer_grn(
   nt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = chromvar_enrichments,
+  genes = var_tfs_of_jaspar_cisbp,
   parallel = TRUE
 )
 
 trt_grn = infer_grn(
   trt_grn_motif,
   peak_to_gene_method = 'GREAT',
-  genes = chromvar_enrichments,
+  genes = var_tfs_of_jaspar_cisbp,
   parallel = TRUE
 )
 
 # export intermediate object
-saveRDS(nt_grn, "../results/GRN/Pando/nt_Pando_GRN.Rds")
-saveRDS(trt_grn, "../results/GRN/Pando/trt_Pando_GRN.Rds")
+saveRDS(nt_grn, glue("{result_folder}nt_Pando_GRN.Rds"))
+saveRDS(trt_grn, glue("{result_folder}trt_Pando_GRN.Rds"))
 
 GetNetwork(nt_grn)
 nt_coefs = coef(nt_grn)
-write_tsv(nt_coefs, "../results/GRN/Pando/nt_Pando_GRN_coefficients.tsv")
+write_tsv(nt_coefs, glue("{result_folder}nt_Pando_GRN_coefficients.tsv"))
 
 GetNetwork(trt_grn)
 trt_coefs = coef(trt_grn)
-write_tsv(trt_coefs, "../results/GRN/Pando/trt_Pando_GRN_coefficients.tsv")
+write_tsv(trt_coefs, glue("{result_folder}trt_Pando_GRN_coefficients.tsv"))
 
 # 3.) Module discovery
 nt_modules = find_modules(
@@ -280,7 +282,7 @@ nt_modules = find_modules(
 
 nt_module_outputs = NetworkModules(nt_modules) 
 nt_module_meta = nt_module_outputs@meta
-write_tsv(nt_module_meta, "../results/GRN/Pando/nt_Pando_GRN_modules.tsv")
+write_tsv(nt_module_meta, glue("{result_folder}nt_Pando_GRN_modules.tsv"))
 
 trt_modules = find_modules(
   trt_grn, 
@@ -292,12 +294,12 @@ trt_modules = find_modules(
 
 trt_module_outputs = NetworkModules(trt_modules) 
 trt_module_meta = trt_module_outputs@meta
-write_tsv(trt_module_meta, "../results/GRN/Pando/nt_Pando_GRN_modules.tsv")
+write_tsv(trt_module_meta, glue("{result_folder}nt_Pando_GRN_modules.tsv"))
 
 # 4.) Visualizations
 # goodness-of-fit metrics
 pdf(
-  file = "../results/GRN/Pando/nt_candidate_tfs-goodness_of_fits.pdf",
+  file = glue("{result_folder}nt_candidate_tfs-goodness_of_fits.pdf"),
   width = 4,
   height = 4
 )
@@ -305,7 +307,7 @@ plot_gof(nt_modules, point_size=3)
 dev.off()
 
 pdf(
-  file = "../results/GRN/Pando/nt_candidate_tfs-module_metrics_plot.pdf",
+  file = glue("{result_folder}nt_candidate_tfs-module_metrics_plot.pdf"),
   width = 12,
   height = 6
 )
@@ -313,14 +315,14 @@ plot_module_metrics(nt_modules)
 dev.off()
 
 pdf(
-  file = "../results/GRN/Pando/trt_candidate_tfs-goodness_of_fits.pdf",
+  file = glue("{result_folder}trt_candidate_tfs-goodness_of_fits.pdf"),
   width = 4,
   height = 4
 )
 plot_gof(trt_modules, point_size=3)
 dev.off()
 pdf(
-  file = "../results/GRN/Pando/trt_candidate_tfs-module_metrics_plot.pdf",
+  file = glue("{result_folder}trt_candidate_tfs-module_metrics_plot.pdf"),
   width = 12,
   height = 6
 )
@@ -334,7 +336,7 @@ nt_network_vis = get_network_graph(nt_modules, umap_method = "none")
 #network_vis = RunUMAP(object = network_vis, reduction = 'lsi', dims = 2:30, assay = "peaks")
 #network_vis = RunUMAP(object = network_vis, reduction = 'lsi', dims = 2:30, assay = "RNA")
 pdf(
-  file = "../results/GRN/Pando/nt_candidate_tfs-network_grap-fr.pdf",
+  file = glue("{result_folder}nt_candidate_tfs-network_grap-fr.pdf"),
   width = 6,
   height = 6
 )
@@ -343,7 +345,7 @@ dev.off()
 
 trt_network_vis = get_network_graph(trt_modules, umap_method = "none")
 pdf(
-  file = "../results/GRN/Pando/trt_candidate_tfs-network_grap-fr.pdf",
+  file = glue("{result_folder}trt_candidate_tfs-network_grap-fr.pdf"),
   width = 6,
   height = 6
 )

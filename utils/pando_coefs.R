@@ -5,6 +5,8 @@ library("ggpubr")
 library("ggrepel")
 library("glue")
 
+#devtools::install_github('quadbio/Pando')
+
 # export folder
 result_folder = "../results/GRN/Pando/"
 
@@ -315,8 +317,9 @@ ggsave(
 )
 
 # TF specific networks
-trt_grn = readRDS("../results/GRN/Pando/chromVAR_TOBIAS_candidates/trt_Pando_GRN.Rds")
-nt_grn = readRDS("../results/GRN/Pando/chromVAR_TOBIAS_candidates/nt_Pando_GRN.Rds")
+trt_grn = readRDS("../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/trt_Pando_GRN.Rds")
+nt_grn = readRDS("../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/nt_Pando_GRN.Rds")
+
 
 
 GetNetwork(trt_grn)

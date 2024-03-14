@@ -1,17 +1,15 @@
-print("Load R packages")
-# packages
-suppressPackageStartupMessages({
-  library("Seurat")
-  library("Signac")
-  library("glue")
-  library("tidyverse")
-  library("rtracklayer")
-  library("GenomicFeatures")
-  library("GenomeInfoDb")
-  library("ggpubr")
-  library("EnsDb.Hsapiens.v86")
-  library("ggrepel")
-})
+if (!require("pacman"))
+  install.packages("pacman")
+pacman::p_load("Seurat",
+               "Signac",
+               "glue",
+               "tidyverse",
+               "GenomicFeatures",
+               "GenomeInfoDb",
+               "ggpubr",
+               "EnsDb.Hsapiens.v86",
+               "ggrepel"
+)
 
 # export folder
 result_folder = "../results/scRNA-Seq/"
@@ -180,6 +178,7 @@ trt_elc_vs_nt_elc = FindMarkers(elc_seurat_rna,
                           group.by = "SID",
                           logfc.threshold = 0.2)
 trt_elc_vs_nt_elc$gene = rownames(trt_elc_vs_nt_elc)
+write_tsv(trt_elc_vs_nt_elc, glue("{result_folder}scRNASeq-trt_ELC_vs_nt_ELC-fc_table.txt"))
 
 trt_elc_vs_nt_elc_sign = trt_elc_vs_nt_elc %>% 
   dplyr::filter(abs(avg_log2FC) > 2 & p_val_adj < 0.05) 
@@ -192,7 +191,7 @@ FeaturePlot(
   features = trt_elc_vs_nt_elc_sign %>% 
     arrange(desc(avg_log2FC)) %>% 
     top_n(6, wt = avg_log2FC) %>% pull(gene),
-  dims = c(1, 2)) 
+  dims = c(1, 2), cols = c("#ece7f2", "#5e1310")) 
 
 ggsave(
   glue("{result_folder}EZH2i_7D_ELC_vs_nt_ELC-top6_fc_featurePlots.png"),
@@ -234,7 +233,7 @@ ggsave(
   device = "pdf"
 )
 
-# these TFs are coming from Pando GRN predictions
+# these TFs are coming from Pando GRN protocol
 # ChromVar/TOBIAS inputs
 interesting_up_tfs = c("CREB3", "HMGXB4", "JUNB", "ATF7", "HIC2", "CREB1", "FOSL2", "TFAP2C")
 interesting_down_tfs = c("SALL4", "ZNF589", "CREM", "TCF3", "GABPA", "MAFG", "FOSL2", "RUNX1", 
@@ -293,7 +292,7 @@ trt_elc_vs_nt_elc_volc = volc_input %>%
   labs(
     title = "EZH2i 7D ELCs vs non-treated ELCs",
     subtitle = "scRNA-Seq marker analysis",
-    x = "fold enrichment",
+    x = "log2FoldChange",
     y = "-log10 adj. p-value",
     fill = " "
   ) +
@@ -330,9 +329,9 @@ ggsave(
 
 volc_input = trt_elc_vs_nt_elc %>% 
   mutate(group = case_when(
-    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
-    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down", 
     gene %in% chromvar_tob ~ "enriched in ChromVar/TOBIAS",
+    avg_log2FC > 2 & p_val_adj < 1e-25 ~ "up",
+    avg_log2FC < -2 & p_val_adj < 1e-25 ~ "down",
     .default = "unaltered"
   )) %>%
   mutate(sign_label = case_when(group == "enriched in ChromVar/TOBIAS" ~ gene, 
@@ -370,7 +369,7 @@ trt_elc_vs_nt_elc_volc_2 = volc_input %>%
   labs(
     title = "EZH2i 7D ELCs vs non-treated ELCs",
     subtitle = "scRNA-Seq marker analysis",
-    x = "fold enrichment",
+    x = "log2FoldChange",
     y = "-log10 adj. p-value",
     fill = " "
   ) +
@@ -447,7 +446,7 @@ trt_elc_vs_nt_elc_volc_3 = volc_input %>%
   labs(
     title = "EZH2i 7D ELCs vs non-treated ELCs",
     subtitle = "scRNA-Seq marker analysis",
-    x = "fold enrichment",
+    x = "log2FoldChange",
     y = "-log10 adj. p-value",
     fill = " "
   ) +
@@ -524,7 +523,7 @@ trt_elc_vs_nt_elc_volc_4 = volc_input %>%
   labs(
     title = "EZH2i 7D ELCs vs non-treated ELCs",
     subtitle = "scRNA-Seq marker analysis",
-    x = "fold enrichment",
+    x = "log2FoldChange",
     y = "-log10 adj. p-value",
     fill = " "
   ) +
