@@ -18,13 +18,13 @@ import celloracle as co
 plt.rcParams["figure.figsize"] = [6,6]
 plt.rcParams["savefig.dpi"] = 600
 
-result_folder = "../results/GRN/CellOracle/is_perturbation/"
+result_folder = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/is_perturbation/"
 
 # CellOracle object of GRN inference workflow
-oracle = "../results/GRN/CellOracle/trt.celloracle.oracle"
+oracle = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/trt.celloracle.oracle"
 oracle = co.load_hdf5(oracle)
 
-grn = "../results/GRN/CellOracle/trt_links.celloracle.links"
+grn = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/trt_links.celloracle.links"
 links = co.load_hdf5(grn)
 
 links.filter_links()
@@ -50,8 +50,9 @@ def perturbation(goi):
     sc.get.obs_df(oracle.adata, keys=[goi], layer="imputed_count").hist()
     plt.savefig(result_folder + goi + "_expression_level_hist.pdf")
     plt.close()
-    # simulation
-    # Enter perturbation conditions to simulate signal propagation after the perturbation.
+    ## simulation
+    # Enter perturbation conditions to simulate signal propagation after the perturbation
+    # 0 means knock out
     oracle.simulate_shift(perturb_condition={goi: 0.0}, n_propagation=3)
     # Get transition probability
     oracle.estimate_transition_prob(n_neighbors=200,
@@ -59,7 +60,7 @@ def perturbation(goi):
                                     sampled_fraction=1)
     # Calculate embedding
     oracle.calculate_embedding_shift(sigma_corr=0.05)
-    ## Visualizations
+    ## visualizations
     fig, ax = plt.subplots(1, 2,  figsize=[13, 6])
     scale = 25 # worth tweaking!
     # Show quiver plot
@@ -83,7 +84,7 @@ def perturbation(goi):
     oracle.calculate_mass_filter(min_mass=min_mass, plot=False)
 
     fig, ax = plt.subplots(1, 2,  figsize=[13, 6])
-    scale_simulation = 7 # tweak it!
+    scale_simulation = 7 # worth tweaking!
     # Show quiver plot
     oracle.plot_simulation_flow_on_grid(scale=scale_simulation, ax=ax[0])
     ax[0].set_title(f"Simulated cell identity shift vector: {goi} KO")
@@ -124,7 +125,7 @@ def perturbation(goi):
 
     # 2D vector map of pseudotime
     gradient.calculate_gradient()
-    scale_dev = 11
+    scale_dev = 11 # worth tweaking!
     gradient.visualize_results(scale=scale_dev, s=5)
     plt.show()
     plt.savefig(result_folder + "scRNA_Seq-Pseudotime_gradient.pdf")
@@ -155,7 +156,7 @@ def perturbation(goi):
     plt.savefig(result_folder + goi + "_Perturbation_scores.pdf")
     plt.close()
 
-    # Show perturbation scores with perturbation simulation vector field
+    # Show perturbation scores with perturbation simulation vectors
     fig, ax = plt.subplots(figsize=[8, 8])
     dev.plot_inner_product_on_grid(vm=vm, s=50, ax=ax, cmap="coolwarm")
     dev.plot_simulation_flow_on_grid(scale=scale_simulation, show_background=False, ax=ax)
@@ -174,6 +175,7 @@ def perturbation(goi):
     plt.close()
     return print(goi + " is done!")
 
+## test
 # KO simulations on TFs
 tfs = ["CDX1", "CDX2", "TBXT", "HAND1", "TFAP2A", "TWIST1", "SOX9", "SOX4", "TBX3", "MEIS2"]
 for tf in tfs:

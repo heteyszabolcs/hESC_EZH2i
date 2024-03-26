@@ -22,12 +22,12 @@ ref_genome = "hg38"
 genomes_dir = "/proj/snic2020-6-3/SZABOLCS/reference_data/genome/"
 
 # result_folder
-result_folder = "../results/GRN/CellOracle/"
+result_folder = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/"
 
-# load cicero outputs
-peaks = pd.read_csv("../results/scATAC-Seq/variable_trt_peaks.csv", index_col=0)
+# load cicero outputs (cicero: https://cole-trapnell-lab.github.io/cicero-release/ )
+peaks = pd.read_csv("/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/scATAC-Seq/variable_trt_peaks.csv", index_col=0)
 peaks = peaks.x.values
-cicero_connections = pd.read_csv("../results/scATAC-Seq/trt_cicero_connections.csv", index_col=0)
+cicero_connections = pd.read_csv("/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/scATAC-Seq/trt_cicero_connections.csv", index_col=0)
 cicero_connections.head()
 
 # TSS annotation

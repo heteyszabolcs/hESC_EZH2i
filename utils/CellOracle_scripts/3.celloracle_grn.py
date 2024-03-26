@@ -12,16 +12,13 @@ import anndata as ad
 # for CellOracle
 import celloracle as co
 
-result_folder = "../results/GRN/CellOracle/"
+result_folder = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/"
 
-var_tfs = "../data/GRN/Variable_TFs-Jaspar2024_CISBP.tsv"
-var_tfs = pd.read_csv(var_tfs, sep='\t')
-var_tfs = var_tfs["TF_name"].to_list()
-
-counts = "../results/scRNA-Seq/hESC_EZH2i_scRNA_Seq-nontrt.csv"
+# read scRNA-Seq data
+counts = "/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/scRNA-Seq/hESC_EZH2i_scRNA_Seq-nontrt.csv"
 counts = pd.read_csv(counts, sep=',', index_col = "Unnamed: 0")
 
-rna = ad.read_h5ad("../results/GRN/CellOracle/hESC_EZH2i_scRNA_Seq-nt_pseudot.h5ad")
+rna = ad.read_h5ad("/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/CellOracle/hESC_EZH2i_scRNA_Seq-nt_pseudot.h5ad")
 var_features = rna.var['var.features'].cat.categories.to_list()
 var_features = [x for x in var_features if str(x) != 'NA']
 rna = rna[:,var_features]
@@ -35,9 +32,9 @@ oracle.import_anndata_as_raw_count(adata=rna,
                                    cluster_column_name="cluster_EML",
                                    embedding_name="X_umap")
 
-# add Pando predictions and base GRN
+# add Pando predictions and base GRN coming from scATAC-Seq processing
 base_grn = pd.read_parquet(result_folder + "nt_base_GRN_dataframe.parquet", engine='pyarrow')
-pando_predictions = pd.read_csv("../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/nt_aggr_coef_table-adjp0.05.tsv",
+pando_predictions = pd.read_csv("/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/nt_aggr_coef_table-adjp0.05.tsv",
                                 sep = "\t")
 
 pando_dict = {}
@@ -87,7 +84,7 @@ links.get_network_score()
 links.merged_score.head()
 links.merged_score.to_csv(result_folder + "nt_network_score_table.tsv", sep = "\t")
 
-# Save Links object - this object will be use in the in silico perturbation
+# Save Links object - this object will be used in the in silico perturbation!
 links.to_hdf5(file_path=result_folder + "nt_links.celloracle.links")
 
 # filtered edges
