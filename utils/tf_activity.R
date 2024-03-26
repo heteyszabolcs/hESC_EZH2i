@@ -95,7 +95,7 @@ rank_nt = ggplot(nt_tf_mean_coefs,
   geom_text_repel(aes(label = bar_label),
                   min.segment.length = 0,
                   max.overlaps = 100) +
-  ylim(-3000, 3000) +
+  ylim(-60, 60) +
   scale_fill_gradient2(
     low = "white",
     mid = "#f8f3b5",

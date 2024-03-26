@@ -1,6 +1,8 @@
 if (!require("pacman"))
   install.packages("pacman")
 pacman::p_load("Seurat",
+               "SeuratData",
+               "SeuratDisk",
                "Signac",
                "glue",
                "tidyverse",
@@ -10,6 +12,8 @@ pacman::p_load("Seurat",
                "EnsDb.Hsapiens.v86",
                "ggrepel"
 )
+
+#options(Seurat.object.assay.version = "v3")
 
 # export folder
 result_folder = "../results/scRNA-Seq/"
@@ -155,6 +159,15 @@ ggsave(
 
 # export Seurat object
 saveRDS(seurat_rna, file = glue("{result_folder}hESC_EZH2i_scRNA_Seq.Rds"))
+
+# export in h5ad format (at first we must set back the Assay format)
+seurat_rna[["RNA3"]] = as(object = seurat_rna[["RNA"]], Class = "Assay")
+DefaultAssay(seurat_rna) = "RNA3"
+seurat_rna[["RNA"]] = NULL
+seurat_rna = RenameAssays(object = seurat_rna, RNA3 = 'RNA')
+
+SaveH5Seurat(seurat_rna, filename = glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"))
+Convert(glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"), dest = "h5ad")
 
 # marker analysis
 tlc_vs_elc = FindMarkers(seurat_rna,
@@ -557,3 +570,5 @@ ggsave(
   height = 7,
   dpi = 300,
 )
+
+x =seurat_rna@meta.data

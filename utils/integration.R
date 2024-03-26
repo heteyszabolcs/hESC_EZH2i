@@ -1,10 +1,3 @@
-# remove package versions
-# remove.packages(c("Seurat", "Signac", "SeuratObject"))
-# 
-# # newest versions
-# install.packages("Seurat")
-# install.packages("Signac")
-
 # packages
 suppressPackageStartupMessages({
   library("Seurat")

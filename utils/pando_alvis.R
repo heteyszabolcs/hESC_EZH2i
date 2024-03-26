@@ -7,16 +7,13 @@ library("SeuratObject", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOL
 
 suppressPackageStartupMessages({
   library("tidyverse", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
-  library("Pando", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/") # Pando requires Seurat V4!!! (e.g. Seurat_4.3.0) and SeuratObject v4
+  library("Pando", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("GenomicRanges", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("BSgenome.Hsapiens.UCSC.hg38", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("glue", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("data.table", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("doParallel", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 })
-
-# handling v4 Seurat objects
-options(Seurat.object.assay.version = "v4")
 
 # result folder
 result_folder = "../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/"
@@ -186,9 +183,19 @@ DefaultAssay(nt_coembed) = "peaks"
 nt_coembed[['RNA']]
 nt_coembed[['peaks']]
 
+nt_atac_peaks = nt_coembed@assays$peaks@ranges
+nt_screen = findOverlaps(nt_atac_peaks, 
+                         SCREEN.ccRE.UCSC.hg38, type = "any", ignore.strand = FALSE)
+nt_screen = nt_atac_peaks[queryHits(nt_screen)] # nt SCREEN regions
+
 DefaultAssay(trt_coembed) = "peaks"
 trt_coembed[['RNA']]
 trt_coembed[['peaks']]
+
+trt_atac_peaks = trt_coembed@assays$peaks@ranges
+trt_screen = findOverlaps(trt_atac_peaks, 
+                          SCREEN.ccRE.UCSC.hg38, type = "any", ignore.strand = FALSE)
+trt_screen = trt_atac_peaks[queryHits(trt_screen)] # trt SCREEN regions
 
 nt_gene_annot = Signac::Annotation(nt_coembed[["peaks"]])
 trt_gene_annot = Signac::Annotation(trt_coembed[["peaks"]])
@@ -199,7 +206,7 @@ nt_init_grn = initiate_grn(
   rna_assay = "RNA",
   peak_assay = "peaks",
   exclude_exons = FALSE,
-  regions = SCREEN.ccRE.UCSC.hg38
+  regions = nt_screen
 )
 
 trt_init_grn = initiate_grn(
@@ -207,7 +214,7 @@ trt_init_grn = initiate_grn(
   rna_assay = "RNA",
   peak_assay = "peaks",
   exclude_exons = FALSE,
-  regions = SCREEN.ccRE.UCSC.hg38
+  regions = trt_screen
 )
 
 
@@ -246,10 +253,10 @@ trt_grn_motif = readRDS( "../results/GRN/Pando/trt_Pando_findmotif.Rds")
 registerDoParallel(4)
 
 # run GRN inference on the most variable scRNA-Seq genes
-nt_var_genes = VariableFeatures(FindVariableFeatures(nt_coembed[["RNA"]],
+nt_var_genes = Seurat::VariableFeatures(FindVariableFeatures(nt_coembed[["RNA"]],
                                                      nfeatures = 100))
 print(nt_var_genes)
-trt_var_genes = VariableFeatures(FindVariableFeatures(trt_coembed[["RNA"]], 
+trt_var_genes = Seurat::VariableFeatures(FindVariableFeatures(trt_coembed[["RNA"]], 
                                                       nfeatures = 100))
 print(trt_var_genes)
 

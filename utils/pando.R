@@ -29,6 +29,10 @@ scrna_trt_elc_vs_nt_elc_sign_up = scrna_trt_elc_vs_nt_elc_sign_up$gene
 var_tfs_of_jaspar_cisbp = fread("../data/GRN/Variable_TFs-Jaspar2024_CISBP.tsv")
 var_tfs_of_jaspar_cisbp = var_tfs_of_jaspar_cisbp$TF_name
 
+# hg38 cis-regulatory elements from SCREEN (GenomicRanges object)
+screen = data('SCREEN.ccRE.UCSC.hg38')
+length(SCREEN.ccRE.UCSC.hg38)
+
 # get annotation
 annotation = GetGRangesFromEnsDb(ensdb = EnsDb.Hsapiens.v86)
 #saveRDS(annotation, "../results/EnsDB_V86_annotation.Rds")
@@ -179,9 +183,19 @@ DefaultAssay(nt_coembed) = "peaks"
 nt_coembed[['RNA']]
 nt_coembed[['peaks']]
 
+nt_atac_peaks = nt_coembed@assays$peaks@ranges
+nt_screen = findOverlaps(nt_atac_peaks, 
+                  SCREEN.ccRE.UCSC.hg38, type = "any", ignore.strand = FALSE)
+nt_screen = nt_atac_peaks[queryHits(nt_screen)] # nt SCREEN regions
+
 DefaultAssay(trt_coembed) = "peaks"
 trt_coembed[['RNA']]
 trt_coembed[['peaks']]
+
+trt_atac_peaks = trt_coembed@assays$peaks@ranges
+trt_screen = findOverlaps(trt_atac_peaks, 
+                         SCREEN.ccRE.UCSC.hg38, type = "any", ignore.strand = FALSE)
+trt_screen = trt_atac_peaks[queryHits(trt_screen)] # trt SCREEN regions
 
 nt_gene_annot = Signac::Annotation(nt_coembed[["peaks"]])
 trt_gene_annot = Signac::Annotation(trt_coembed[["peaks"]])
@@ -191,16 +205,17 @@ nt_init_grn = initiate_grn(
   nt_coembed,
   rna_assay = "RNA",
   peak_assay = "peaks",
-  exclude_exons = FALSE
+  exclude_exons = FALSE,
+  regions = nt_screen
 )
 
 trt_init_grn = initiate_grn(
   trt_coembed,
   rna_assay = "RNA",
   peak_assay = "peaks",
-  exclude_exons = FALSE
+  exclude_exons = FALSE,
+  regions = trt_screen
 )
-
 
 nt_candidate_regions = NetworkRegions(nt_init_grn)
 nt_candidate_regions = nt_candidate_regions@ranges
