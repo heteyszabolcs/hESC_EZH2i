@@ -72,18 +72,18 @@ cicero_analysis = function(seurat_object_path,
   # make cicero object
   cicero_cds = make_cicero_cds(input_cds, reduced_coordinates = umap_coords)
   saveRDS(cicero_cds,
-          glue("{result_folder}{label}_ELC_cicero_cds.Rds"))
+          glue("{result_folder}{label}_cicero_cds.Rds"))
   
   # main function: co-accessibility detection
   chroms = fread(chroms)
   conns = run_cicero(cicero_cds, chroms) # long run!
   saveRDS(conns,
-          glue("{result_folder}{label}_ELC_cicero_connections.Rds"))
+          glue("{result_folder}{label}_cicero_connections.Rds"))
   
   # exports
   all_peaks = row.names(exprs(input_cds))
   write.csv(x = all_peaks,
-            file = glue("{result_folder}all_{label}_peaks.csv"))
+            file = glue("{result_folder}variable_{label}_peaks.csv"))
   write.csv(
     x = conns,
     file = glue("{result_folder}{label}_cicero_connections.csv")
