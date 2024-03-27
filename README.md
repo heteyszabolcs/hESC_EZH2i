@@ -43,9 +43,12 @@ If the inputs are properly generated, we must run the individual Python scripts 
 
 ### GRN inference by [Pando](https://github.com/quadbio/Pando/)
 
-Codes: 
+Codes:
+
 _utils/pando.R_
+
 _utils/pando_alvis.R_ (for cluster Alvis)
+
 _utils/integration.R_ - multi-omic data integration by Seurat
 
 Aims:
@@ -88,8 +91,11 @@ Pando requires these inputs for GRN initialization:
 - candidate regions - e.g. cis-regulatory data (SCREEN) - optional, if it is not set every scATAC-Seq peak region is considered.
 
 Obligatory package version requirements for Pando v1.0.0:
+
     Signac_1.11.0
+        
     SeuratObject_4.1.4
+        
     Seurat_4.3.0
 
 
