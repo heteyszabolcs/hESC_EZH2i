@@ -43,6 +43,11 @@ If the inputs are properly generated, we must run the individual Python scripts 
 
 ### GRN inference by [Pando](https://github.com/quadbio/Pando/)
 
+Codes: 
+_utils/pando.R_
+_utils/pando_alvis.R_ (for cluster Alvis)
+_utils/integration.R_ - multi-omic data integration by Seurat
+
 Aims:
 
 - Gene regulatory network (GRN) reconstruction of EZH2i-treated naïve epiblast-like cells (ELCs).
