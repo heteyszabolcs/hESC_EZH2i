@@ -52,8 +52,10 @@ Reference: [PANDO Nature paper - Fleck et al. (2022)](https://www.nature.com/art
 
 Data and results:
 hESC scATAC-Seq and hESC scRNA-Seq:
-    @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/data
+
+    @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/data  
 GRN inferences:
+
     @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN
     
 
