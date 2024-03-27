@@ -79,11 +79,11 @@ Four main steps of Pando:
 
 (3) Selecting region-TF pairs for each target gene (target gene = candidate gene).
 
-(4) Constructing a regression model (see the equation on figure) with region-TF pairs as independent variables and the expression of the target gene as the response variable.
+(4) Constructing a regression model with region-TF pairs as independent variables and the expression of the target gene as the response variable.
 
 Pando requires these inputs for GRN initialization:
 
-- coembedded (merged) single-cell omic assays: scATAC-Seq, scRNA-Seq - mandatory
+- coembedded (merged) single-cell omic assays: scATAC-Seq, scRNA-Seq - mandatory (see _utils/integration.R_)
 - coembedded_Seurat_object[['peaks']] = scATAC-Seq assay
 - coembedded_Seurat_object[['RNA']] = scRNA-Seq assay
 - candidate genes (targets) to consider for GRN inference - mandatory
