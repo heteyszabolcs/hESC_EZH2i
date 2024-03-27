@@ -41,6 +41,21 @@ If the inputs are properly generated, we must run the individual Python scripts 
 3. base GRN construction
 4. _in silico_ perturbations
 
+### GRN inference by [Pando](https://github.com/quadbio/Pando/)
+
+Aims:
+
+- Gene regulatory network (GRN) reconstruction of EZH2i-treated naïve epiblast-like cells (ELCs).
+- Finding lineage specific transcription factor (TF) hierarchy that interplays with EZH2 inhibition.
+
+Reference: [PANDO Nature paper - Fleck et al. (2022)](https://www.nature.com/articles/s41586-022-05279-8)
+
+Data and results:
+hESC scATAC-Seq and hESC scRNA-Seq:
+    @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/data
+GRN inferences:
+    @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN
+    
 
 
 
