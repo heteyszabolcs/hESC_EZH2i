@@ -54,11 +54,33 @@ Data and results:
 hESC scATAC-Seq and hESC scRNA-Seq:
 
     @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/data  
+
 GRN inferences:
 
     @ Uppmax: /crex/proj/snic2020-6-3/SZABOLCS/hESC_EZH2i/results/GRN
-    
 
+Pando provides a flexible framework that incorporates multi-omic data (in our case scATAC-Seq and scRNA-Seq) to infer a global gene regulatory network. Our aim was to describe the main transcription factor changes due to EZH2 inhibition in ELCs.
 
+Pando leverages multimodal single-cell genomic measurements and models gene expression through TF - peak (=ATAC-Seq peak) interactions. 
+
+Four main steps of Pando:
+(1) Selecting candidate regulatory genomic regions (coming from scATAC data layer).
+(2) Scanning regions for transcription factor binding motifs (motif enrichment).
+(3) Selecting region-TF pairs for each target gene (target gene = candidate gene).
+(4) Constructing a regression model (see the equation on figure) with region-TF pairs as independent variables and the expression of the target gene as the response variable.
+
+Pando requires these inputs for GRN initialization:
+
+- coembedded (merged) single-cell omic assays: scATAC-Seq, scRNA-Seq - mandatory
+- coembedded_Seurat_object[['peaks']] = scATAC-Seq assay
+- coembedded_Seurat_object[['RNA']] = scRNA-Seq assay
+- candidate genes (targets) to consider for GRN inference - mandatory
+- motif dataset for TF motif finding - PANDO has built-in dataset
+- candidate regions - e.g. cis-regulatory data (SCREEN) - optional, if it is not set every scATAC-Seq peak region is considered.
+
+Obligatory package version requirements for Pando v1.0.0:
+    Signac_1.11.0
+    SeuratObject_4.1.4
+    Seurat_4.3.0
 
 
