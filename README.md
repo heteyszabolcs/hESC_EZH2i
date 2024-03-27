@@ -69,9 +69,13 @@ Pando provides a flexible framework that incorporates multi-omic data (in our ca
 Pando leverages multimodal single-cell genomic measurements and models gene expression through TF - peak (=ATAC-Seq peak) interactions. 
 
 Four main steps of Pando:
+
 (1) Selecting candidate regulatory genomic regions (coming from scATAC data layer).
+
 (2) Scanning regions for transcription factor binding motifs (motif enrichment).
+
 (3) Selecting region-TF pairs for each target gene (target gene = candidate gene).
+
 (4) Constructing a regression model (see the equation on figure) with region-TF pairs as independent variables and the expression of the target gene as the response variable.
 
 Pando requires these inputs for GRN initialization:
