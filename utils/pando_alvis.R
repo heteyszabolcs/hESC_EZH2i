@@ -15,8 +15,6 @@ suppressPackageStartupMessages({
   library("doParallel", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 })
 
-#options(Seurat.object.assay.version = "v4")
-
 # result folder
 result_folder = "../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/"
 
@@ -245,10 +243,10 @@ trt_grn_motif = find_motifs(
 
 # export intermediate object
 saveRDS(nt_grn_motif, paste0(result_folder, "nt_Pando_findmotif.Rds"))
-nt_grn_motif = readRDS( "../results/GRN/Pando/nt_Pando_findmotif.Rds")
+nt_grn_motif = readRDS(paste0(result_folder, "nt_Pando_findmotif.Rds"))
 
 saveRDS(trt_grn_motif, paste0(result_folder, "trt_Pando_findmotif.Rds"))
-trt_grn_motif = readRDS( "../results/GRN/Pando/trt_Pando_findmotif.Rds")
+trt_grn_motif = readRDS(paste0(result_folder, "trt_Pando_findmotif.Rds"))
 
 # 3.) infer gene regulatory network (long run!!!)
 registerDoParallel(4)
