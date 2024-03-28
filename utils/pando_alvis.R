@@ -3,7 +3,7 @@
 library("cli", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 library("Seurat", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 library("Signac", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
-library("SeuratObject", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
+#library("SeuratObject", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 
 suppressPackageStartupMessages({
   library("tidyverse", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
@@ -14,6 +14,8 @@ suppressPackageStartupMessages({
   library("data.table", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
   library("doParallel", lib.loc = "/mimer/NOBACKUP/groups/naiss2024-22-62/SZABOLCS/hESC_EZH2i/utils/packages/")
 })
+
+#options(Seurat.object.assay.version = "v4")
 
 # result folder
 result_folder = "../results/GRN/Pando/Var_TFs_of_Jaspar_CISBP/"
@@ -216,7 +218,6 @@ trt_init_grn = initiate_grn(
   exclude_exons = FALSE,
   regions = trt_screen
 )
-
 
 nt_candidate_regions = NetworkRegions(nt_init_grn)
 nt_candidate_regions = nt_candidate_regions@ranges
