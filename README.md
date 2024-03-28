@@ -90,12 +90,9 @@ Pando requires these inputs for GRN initialization:
 - motif dataset for TF motif finding - PANDO has built-in dataset
 - candidate regions - e.g. cis-regulatory data (SCREEN) - optional, if it is not set every scATAC-Seq peak region is considered.
 
-Obligatory package version requirements for Pando v1.0.0:
-
-    Signac_1.11.0
-        
-    SeuratObject_4.1.4
-        
-    Seurat_4.3.0
+Pando's version controlling is sensitive. Recently only **Pando v1.1.0** runs successfully with Seurat v5 (SeuratObject_5.0.1, Seurat_5.0.3, Signac_1.12.0):
+```
+devtools::install_github("quadbio/Pando@v1.1.0")
+```
 
 
