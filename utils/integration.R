@@ -24,7 +24,7 @@ DefaultAssay(atac_nt) = "GA"
 DefaultAssay(atac_trt) = "GA"
 
 ### non-treated workflow ###
-# scRNA-Seq (naive ELC cells)
+# scRNA-Seq
 rna = "../results/scRNA-Seq/hESC_EZH2i_scRNA_Seq.Rds"
 rna = readRDS(rna)
 
@@ -380,3 +380,46 @@ ggsave(
   height = 6,
   device = "pdf"
 )
+
+trt_tlc_preds = trt_predicted.labels %>% dplyr::filter(predicted.id == "TLC") %>% 
+  dplyr::filter(prediction.score.max > 0.6)
+trt_melc_preds = trt_predicted.labels %>% dplyr::filter(predicted.id == "MeLC") %>% 
+  dplyr::filter(prediction.score.max > 0.6)
+
+# Comparison with Cheng's annotations
+library("data.table")
+chen = fread("../results/Seurat_integration/scATAC_annotation/Chen_scATAC_annot-extended.tsv")
+
+chen_tlc = chen %>% 
+  dplyr::filter(devTime == "EZH2i") %>% 
+  separate(cell, sep = "EZH2i.10X.", into = c("rest", "id")) %>% 
+  dplyr::select(-rest) %>% 
+  dplyr::filter(str_detect(cluster_EML, pattern = "TLC")) %>% 
+  pull(id)
+
+tlc = trt_predicted.labels %>% dplyr::filter(predicted.id == "TLC") %>% rownames()
+print(paste0("Number of TLCs in our scATAC workflow: ", length(tlc)))
+print(paste0("Number of TLCs in Cheng's scATAC workflow: ", length(chen_tlc)))
+print(paste0("Intersection: ", length(intersect(chen_tlc, tlc))))
+round((length(intersect(chen_tlc, tlc)) / length(tlc)) * 100, 2)
+
+chen_melc = chen %>% 
+  dplyr::filter(devTime == "EZH2i") %>% 
+  separate(cell, sep = "EZH2i.10X.", into = c("rest", "id")) %>% 
+  dplyr::select(-rest) %>% 
+  dplyr::filter(str_detect(cluster_EML, pattern = "MeLC")) %>% 
+  pull(id)
+
+melc = trt_predicted.labels %>% dplyr::filter(predicted.id == "MeLC") %>% rownames()
+print(paste0("Number of MeLCs in our scATAC workflow: ", length(melc)))
+print(paste0("Number of MeLCs in Cheng's scATAC workflow: ", length(chen_melc)))
+print(paste0("Intersection: ", length(intersect(chen_melc, melc))))
+round((length(intersect(chen_melc, melc)) / length(melc)) * 100, 2)
+
+melc_intersection = tibble(cell_id = intersect(chen_melc, melc))
+write_tsv(melc_intersection, glue("{result_folder}scATAC-MeLC_cells-int_w_Chengs.tsv"))
+
+tlc_intersection = tibble(cell_id = intersect(chen_tlc, tlc))
+write_tsv(tlc_intersection, glue("{result_folder}scATAC-TLC_cells-int_w_Chengs.tsv"))
+
+

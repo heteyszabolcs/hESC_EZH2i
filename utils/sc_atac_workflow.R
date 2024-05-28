@@ -63,6 +63,7 @@ nt_seurat = TSSEnrichment(object = nt_seurat, fast = TRUE)
 
 nt_seurat$pct_reads_in_peaks = nt_seurat$peak_region_fragments / nt_seurat$passed_filters * 100
 
+nt_seurat@meta.data = nt_seurat@meta.data %>% mutate(orig.ident = "non-treated")
 VlnPlot(
   object = nt_seurat,
   features = c('nCount_peaks', 'TSS.enrichment'),
@@ -73,6 +74,14 @@ VlnPlot(
   features = c('nucleosome_signal', 'pct_reads_in_peaks'),
   pt.size = 0.1,
   ncol = 2) 
+
+ggsave(
+  glue("{result_folder}nt_scATAC_UMAP.pdf"),
+  plot = nt_umap,
+  width = 6,
+  height = 4,
+  device = "pdf"
+)
 
 # filtering
 nt_seurat = subset(
@@ -106,6 +115,88 @@ nt_umap = DimPlot(object = nt_seurat, label = TRUE) +
     axis.text.y = element_text(size = 25, color = "black")
   ) 
 nt_umap
+
+ggsave(
+  glue("{result_folder}nt_scATAC_UMAP.pdf"),
+  plot = nt_umap,
+  width = 6,
+  height = 4,
+  device = "pdf"
+)
+
+ggsave(
+  glue("{result_folder}nt_scATAC_UMAP.png"),
+  plot = nt_umap,
+  width = 6,
+  height = 4,
+  dpi = 300,
+)
+
+tss_viol = VlnPlot(
+  object = nt_seurat,
+  features = 'TSS.enrichment',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+ncount_viol = VlnPlot(
+  object = nt_seurat,
+  features = 'nCount_peaks',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+nuclsignal_viol = VlnPlot(
+  object = nt_seurat,
+  features = 'nucleosome_signal',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+pct_viol = VlnPlot(
+  object = nt_seurat,
+  features = 'pct_reads_in_peaks',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  ggtitle("FRIP") +
+  NoLegend()
+
+nt_violins = ggarrange(tss_viol, ncount_viol, nuclsignal_viol, pct_viol)
+ggsave(
+  glue("{result_folder}nt_QC_violins.pdf"),
+  plot = nt_violins,
+  width = 10,
+  height = 8
+)
+
+ggsave(
+  glue("{result_folder}nt_QC_violins.png"),
+  plot = nt_violins,
+  width = 10,
+  height = 8,
+  dpi = 300,
+)
 
 # gene activities
 nt_ga = GeneActivity(nt_seurat)
@@ -178,6 +269,87 @@ trt_umap = DimPlot(object = trt_seurat, label = TRUE) +
   ) 
 trt_umap
 
+ggsave(
+  glue("{result_folder}trt_scATAC_UMAP.pdf"),
+  plot = trt_umap,
+  width = 6,
+  height = 4,
+  device = "pdf"
+)
+
+ggsave(
+  glue("{result_folder}trt_scATAC_UMAP.png"),
+  plot = trt_umap,
+  width = 6,
+  height = 4,
+  dpi = 300,
+)
+
+tss_viol = VlnPlot(
+  object = trt_seurat,
+  features = 'TSS.enrichment',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+ncount_viol = VlnPlot(
+  object = trt_seurat,
+  features = 'nCount_peaks',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+nuclsignal_viol = VlnPlot(
+  object = trt_seurat,
+  features = 'nucleosome_signal',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  NoLegend()
+pct_viol = VlnPlot(
+  object = trt_seurat,
+  features = 'pct_reads_in_peaks',
+  pt.size = 0.1) +
+  scale_fill_brewer(palette = "Set1") +
+  theme(
+    text = element_text(size = 25),
+    plot.title = element_text(size = 20),
+    axis.text.x = element_text(size = 25, color = "black", angle = 0),
+    axis.text.y = element_text(size = 25, color = "black")
+  ) +
+  ggtitle("FRIP") +
+  NoLegend()
+
+trt_violins = ggarrange(tss_viol, ncount_viol, nuclsignal_viol, pct_viol)
+ggsave(
+  glue("{result_folder}trt_QC_violins.pdf"),
+  plot = trt_violins,
+  width = 10,
+  height = 8
+)
+
+ggsave(
+  glue("{result_folder}trt_QC_violins.png"),
+  plot = trt_violins,
+  width = 10,
+  height = 8,
+  dpi = 300,
+)
 
 # gene activities
 trt_ga = GeneActivity(trt_seurat)
