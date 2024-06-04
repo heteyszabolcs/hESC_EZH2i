@@ -389,6 +389,7 @@ trt_melc_preds = trt_predicted.labels %>% dplyr::filter(predicted.id == "MeLC") 
 # Comparison with Cheng's annotations
 library("data.table")
 chen = fread("../results/Seurat_integration/scATAC_annotation/Chen_scATAC_annot-extended.tsv")
+result_folder = "../results/Seurat_integration/scATAC_annotation/"
 
 chen_tlc = chen %>% 
   dplyr::filter(devTime == "EZH2i") %>% 
@@ -403,6 +404,9 @@ print(paste0("Number of TLCs in Cheng's scATAC workflow: ", length(chen_tlc)))
 print(paste0("Intersection: ", length(intersect(chen_tlc, tlc))))
 round((length(intersect(chen_tlc, tlc)) / length(tlc)) * 100, 2)
 
+all_tlcs = union(tlc, chen_tlc)
+all_tlcs = tibble(TLC = all_tlcs)
+
 chen_melc = chen %>% 
   dplyr::filter(devTime == "EZH2i") %>% 
   separate(cell, sep = "EZH2i.10X.", into = c("rest", "id")) %>% 
@@ -416,10 +420,14 @@ print(paste0("Number of MeLCs in Cheng's scATAC workflow: ", length(chen_melc)))
 print(paste0("Intersection: ", length(intersect(chen_melc, melc))))
 round((length(intersect(chen_melc, melc)) / length(melc)) * 100, 2)
 
+all_melcs = union(melc, chen_melc)
+all_melcs = tibble(MeLC = all_melcs)
+
 melc_intersection = tibble(cell_id = intersect(chen_melc, melc))
 write_tsv(melc_intersection, glue("{result_folder}scATAC-MeLC_cells-int_w_Chengs.tsv"))
+write_tsv(all_melcs, glue("{result_folder}scATAC-MeLC_cells-union_w_Chengs.tsv"))
 
 tlc_intersection = tibble(cell_id = intersect(chen_tlc, tlc))
 write_tsv(tlc_intersection, glue("{result_folder}scATAC-TLC_cells-int_w_Chengs.tsv"))
-
+write_tsv(all_tlcs, glue("{result_folder}scATAC-TLC_cells-union_w_Chengs.tsv"))
 

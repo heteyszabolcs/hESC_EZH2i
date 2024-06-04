@@ -23,19 +23,52 @@ coembed_motif = readRDS("../results/motif_analysis/trt_nt_coembed_scATAC-motif.R
 coembed_seurat[["motifs"]] = coembed_motif
 DefaultAssay(object = coembed_seurat) = "peaks"
 
-# susbet ELCs to Cheng's ELC annotations
+atac_trt_motif = readRDS(file = "../results/motif_analysis/trt_scATAC-motif.Rds")
+atac_trt = readRDS(glue("../results/Seurat_integration/scATAC_annotation/trt_scATAC-labeled.Rds"))
+atac_trt[["motifs"]] = atac_trt_motif
+DefaultAssay(object = atac_trt) = "peaks"
+
+# Cheng's scATAC annotation
 chengs_annot = 
   read_tsv("../results/Seurat_integration/scATAC_annotation/Chen_scATAC_annot-extended.tsv")
-chengs_elc = cheng %>% dplyr::filter(EML == "merged_ELC") %>% 
+
+chengs_annot_trt = chengs_annot %>% separate(cell, sep = ".10X.", into = c("a", "id")) %>% 
+  dplyr::select(-a) %>% 
+  dplyr::filter(devTime == "EZH2i")
+
+# EZH2i treated TLCs, MeLCs
+tlc = chengs_annot_trt %>% dplyr::filter(str_detect(cluster_EML, "TLC")) %>% pull(id)
+melc = chengs_annot_trt %>% dplyr::filter(str_detect(cluster_EML, "MeLC")) %>% pull(id)
+
+meta = atac_trt@meta.data %>% rownames_to_column(var = "cell_id") %>% 
+  mutate(predicted.id_cheng = case_when(cell_id %in% tlc ~ "TLC",
+                                        cell_id %in% melc ~ "MeLC",
+                                        .default = predicted.id))
+rownames(meta) = meta$cell_id
+meta = meta %>% dplyr::select(-cell_id)
+atac_trt@meta.data = meta
+
+# ELCs
+chengs_elc = chengs_annot %>% dplyr::filter(EML == "merged_ELC") %>% 
   mutate(cell = unname(sapply(cell, function(x) { strsplit(x, ".10X.")[[1]][2]})))
 
 coembed_meta = coembed_seurat@meta.data
 coembed_meta = coembed_meta %>% mutate(cell_id = 
-                         unname(sapply(rownames(meta), function(x) { strsplit(x, "_")[[1]][1]})))
+                         unname(sapply(rownames(coembed_meta), function(x) { strsplit(x, "_")[[1]][1]})))
 coembed_seurat@meta.data = coembed_meta
 coembed_cheng = subset(coembed_seurat, subset = cell_id %in% chengs_elc$cell)
 
+## ChromVar analysis
 # keep only valid GRanges strings
+valid_feats = which(seqnames(atac_trt[['peaks']]@ranges) %in% 
+                      standardChromosomes(atac_trt[['peaks']]@ranges))
+atac_trt = atac_trt[valid_feats, ]
+atac_trt = RunChromVAR(
+  object = atac_trt,
+  genome = BSgenome.Hsapiens.UCSC.hg38,
+  assay = "motifs"
+)
+
 valid_feats = which(seqnames(coembed_seurat[['peaks']]@ranges) %in% standardChromosomes(coembed_seurat[['peaks']]@ranges))
 coembed_seurat = coembed_seurat[valid_feats, ]
 coembed_seurat = RunChromVAR(
@@ -45,6 +78,7 @@ coembed_seurat = RunChromVAR(
 )
 
 # TF activity marker analysis
+# ELCs
 DefaultAssay(coembed_seurat) = 'chromvar'
 trt_vs_nt_ELC_diff_activity = FindMarkers(
   object = coembed_seurat,
@@ -72,9 +106,162 @@ trt_vs_nt_ELC_top_activities = trt_vs_nt_ELC_diff_activity %>%
 sign_in_trt = trt_vs_nt_ELC_diff_activity %>% 
   dplyr::filter(p_val_adj < 0.05) %>% dplyr::filter(avg_diff > 1.5) %>% rownames
 
+# ChromVar on Cheng's ELC population
+valid_feats = which(seqnames(coembed_cheng[['peaks']]@ranges) %in% standardChromosomes(coembed_cheng[['peaks']]@ranges))
+coembed_cheng = coembed_cheng[valid_feats, ]
+coembed_cheng = RunChromVAR(
+  object = coembed_cheng,
+  genome = BSgenome.Hsapiens.UCSC.hg38,
+  assay = "motifs"
+)
+
+# TF activity marker analysis
+DefaultAssay(coembed_cheng) = 'chromvar'
+trt_vs_nt_ELC_diff_activity_cheng = FindMarkers(
+  object = coembed_cheng,
+  ident.1 = "EZH2i_7D_scATAC_Seq",
+  ident.2 = "non_trt_scATAC_Seq",
+  group.by = "orig.ident",
+  only.pos = FALSE,
+  mean.fxn = rowMeans,
+  fc.name = "avg_diff"
+)
+
+trt_vs_nt_ELC_diff_activity_cheng = trt_vs_nt_ELC_diff_activity_cheng %>%
+  mutate(gene_name = ConvertMotifID(
+    coembed_seurat,
+    assay = "motifs",
+    id = rownames(trt_vs_nt_ELC_diff_activity_cheng)
+  )) 
+
+trt_vs_nt_ELC_diff_activity = read_tsv(glue("{result_folder}ELC_trt_vs_nt-ChromVar_output.tsv"))
+
+length(intersect(trt_vs_nt_ELC_diff_activity_cheng %>% 
+                   dplyr::filter(p_val_adj < 0.05) %>% 
+                   arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>% 
+                   pull(gene_name),
+                 trt_vs_nt_ELC_diff_activity %>% 
+                   dplyr::filter(p_val_adj < 0.05) %>% 
+                   arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>% 
+                   pull(gene_name)))
+setdiff(
+  trt_vs_nt_ELC_diff_activity_cheng %>% 
+    dplyr::filter(p_val_adj < 0.05) %>% 
+    arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>%
+    pull(gene_name),
+  trt_vs_nt_ELC_diff_activity %>% 
+    dplyr::filter(p_val_adj < 0.05) %>% 
+    arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>%
+    pull(gene_name)
+)
+
+# EZH2i TLC and MeLC specific activities
+DefaultAssay(atac_trt) = 'chromvar'
+atac_trt@meta.data = meta
+trt_TLC_vs_all = FindMarkers(
+  object = atac_trt,
+  ident.1 = "TLC",
+  ident.2 = NULL,
+  group.by = "predicted.id_cheng",
+  only.pos = FALSE,
+  mean.fxn = rowMeans,
+  fc.name = "avg_diff"
+)
+
+trt_TLC_vs_all %>%
+  mutate(gene_name = ConvertMotifID(
+    atac_trt,
+    assay = "motifs",
+    id = rownames(trt_TLC_vs_all)
+  )) %>% write_tsv(., 
+                   glue("{result_folder}trt_TLC_vs_all.tsv"))
+
+trt_TLC_vs_all_top = trt_TLC_vs_all %>% 
+  arrange(desc(avg_diff)) %>% 
+  rownames %>% 
+  head(10)
+
+
+trt_MeLC_vs_all = FindMarkers(
+  object = atac_trt,
+  ident.1 = "MeLC",
+  ident.2 = NULL,
+  group.by = "predicted.id_cheng",
+  only.pos = FALSE,
+  mean.fxn = rowMeans,
+  fc.name = "avg_diff"
+)
+
+trt_MeLC_vs_all %>%
+  mutate(gene_name = ConvertMotifID(
+    atac_trt,
+    assay = "motifs",
+    id = rownames(trt_MeLC_vs_all)
+  )) %>% write_tsv(., 
+                   glue("{result_folder}trt_MeLC_vs_all.tsv"))
+
+trt_MeLC_vs_all_top = trt_MeLC_vs_all %>% 
+  arrange(desc(avg_diff)) %>% 
+  rownames %>% 
+  head(10)
 
 # motif logos
 require("ggseqlogo")
+pdf(
+  file = "../results/motif_analysis/trt_TLC_vs_all.pdf",
+  width = 10,
+  height = 4
+)
+MotifPlot(
+  object = atac_trt,
+  motifs = trt_TLC_vs_all_top,
+  assay = "motifs"
+)
+dev.off()
+
+png(
+  file = "../results/motif_analysis/trt_TLC_vs_all.png",
+  width = 13,
+  height = 10,
+  units = "cm",
+  res = 300
+)
+MotifPlot(
+  object = atac_trt,
+  motifs = trt_TLC_vs_all_top,
+  assay = "motifs"
+)
+dev.off()
+
+
+pdf(
+  file = "../results/motif_analysis/trt_MeLC_vs_all.pdf",
+  width = 10,
+  height = 4
+)
+MotifPlot(
+  object = atac_trt,
+  motifs = trt_MeLC_vs_all_top,
+  assay = "motifs"
+)
+dev.off()
+
+png(
+  file = "../results/motif_analysis/trt_MeLC_vs_all.png",
+  width = 13,
+  height = 10,
+  units = "cm",
+  res = 300
+)
+MotifPlot(
+  object = atac_trt,
+  motifs = trt_MeLC_vs_all_top,
+  assay = "motifs"
+)
+dev.off()
+
+
+
 pdf(
   file = "../results/motif_analysis/trt_ELC_vs_nt_ELC-top_chromVar_act.pdf",
   width = 10,
@@ -99,7 +286,13 @@ MotifPlot(
 )
 dev.off()
 
-## visualizations
+MotifPlot(
+  object = atac_trt,
+  motifs = trt_MeLC_vs_all,
+  assay = "motifs"
+)
+
+# other visualizations
 # scatter
 volc_input = trt_vs_nt_ELC_diff_activity %>% 
   rownames_to_column(var = "motif_id") %>% 
@@ -175,55 +368,6 @@ ggsave(
   width = 7,
   height = 5,
   device = "pdf"
-)
-
-# ChromVar on Cheng's ELC population
-valid_feats = which(seqnames(coembed_cheng[['peaks']]@ranges) %in% standardChromosomes(coembed_cheng[['peaks']]@ranges))
-coembed_cheng = coembed_cheng[valid_feats, ]
-coembed_cheng = RunChromVAR(
-  object = coembed_cheng,
-  genome = BSgenome.Hsapiens.UCSC.hg38,
-  assay = "motifs"
-)
-
-# TF activity marker analysis
-DefaultAssay(coembed_cheng) = 'chromvar'
-trt_vs_nt_ELC_diff_activity_cheng = FindMarkers(
-  object = coembed_cheng,
-  ident.1 = "EZH2i_7D_scATAC_Seq",
-  ident.2 = "non_trt_scATAC_Seq",
-  group.by = "orig.ident",
-  only.pos = FALSE,
-  mean.fxn = rowMeans,
-  fc.name = "avg_diff"
-)
-
-trt_vs_nt_ELC_diff_activity_cheng = trt_vs_nt_ELC_diff_activity_cheng %>%
-  mutate(gene_name = ConvertMotifID(
-    coembed_seurat,
-    assay = "motifs",
-    id = rownames(trt_vs_nt_ELC_diff_activity_cheng)
-  )) 
-
-trt_vs_nt_ELC_diff_activity = read_tsv(glue("{result_folder}ELC_trt_vs_nt-ChromVar_output.tsv"))
-
-length(intersect(trt_vs_nt_ELC_diff_activity_cheng %>% 
-                   dplyr::filter(p_val_adj < 0.05) %>% 
-                   arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>% 
-  pull(gene_name),
-trt_vs_nt_ELC_diff_activity %>% 
-  dplyr::filter(p_val_adj < 0.05) %>% 
-  arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>% 
-  pull(gene_name)))
-setdiff(
-  trt_vs_nt_ELC_diff_activity_cheng %>% 
-    dplyr::filter(p_val_adj < 0.05) %>% 
-    arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>%
-    pull(gene_name),
-  trt_vs_nt_ELC_diff_activity %>% 
-    dplyr::filter(p_val_adj < 0.05) %>% 
-    arrange(desc(avg_diff)) %>% top_n(n = 30, wt = avg_diff) %>%
-    pull(gene_name)
 )
 
 volc_input = trt_vs_nt_ELC_diff_activity_cheng %>% 
