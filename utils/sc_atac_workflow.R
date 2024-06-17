@@ -84,14 +84,14 @@ ggsave(
 )
 
 # filtering
-nt_seurat = subset(
-  x = nt_seurat,
-  subset = nCount_peaks > 2000 &
-    nCount_peaks < 30000 &
-    pct_reads_in_peaks > 30 &
-    nucleosome_signal < 2 &
-    TSS.enrichment > 2
-)
+# nt_seurat = subset(
+#   x = nt_seurat,
+#   subset = nCount_peaks > 2000 &
+#     nCount_peaks < 30000 &
+#     pct_reads_in_peaks > 30 &
+#     nucleosome_signal < 2 &
+#     TSS.enrichment > 2
+# )
 
 # normalization
 nt_seurat = RunTFIDF(nt_seurat)
@@ -237,14 +237,14 @@ VlnPlot(
   ncol = 2) 
 
 # filtering
-trt_seurat = subset(
-  x = trt_seurat,
-  subset = nCount_peaks > 2000 &
-    nCount_peaks < 30000 &
-    pct_reads_in_peaks > 30 &
-    nucleosome_signal < 2 &
-    TSS.enrichment > 2
-)
+# trt_seurat = subset(
+#   x = trt_seurat,
+#   subset = nCount_peaks > 2000 &
+#     nCount_peaks < 30000 &
+#     pct_reads_in_peaks > 30 &
+#     nucleosome_signal < 2 &
+#     TSS.enrichment > 2
+# )
 
 # normalization
 trt_seurat = RunTFIDF(trt_seurat)

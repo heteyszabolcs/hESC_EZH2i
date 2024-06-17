@@ -22,10 +22,15 @@ result_folder = "../results/scRNA-Seq/"
 counts = readRDS("../data/scRNA-Seq/Nerges.counts.filter.rds")
 print(paste0("Total number of cells: ", length(unique(colnames(counts)))))
 
-# keeping ELC cells, nontreated and D7 EZH2i treated
+# filtering
+qc.nGene.min = 1000
+qc.nGene.max = 6000
+qc.mt.perc = 0.15
+
 meta = readRDS("../data/scRNA-Seq/Nerges.meta.filter.rds")
 meta = meta %>% dplyr::filter(cluster_EML != "Undef")
-meta = meta %>% dplyr::filter(cellType == "EZH2i_Naive_WT" | cellType == "EZH2i_Naive_D7")
+meta = meta %>% dplyr::filter(cellType == "EZH2i_Naive_WT" | cellType == "EZH2i_Naive_D7") %>% 
+  dplyr::filter(nGene < qc.nGene.max & mt.perc < qc.mt.perc & nGene > qc.nGene.min) 
 counts = counts[,meta$cell]
 
 # explore cell annotations
@@ -166,8 +171,8 @@ DefaultAssay(seurat_rna) = "RNA3"
 seurat_rna[["RNA"]] = NULL
 seurat_rna = RenameAssays(object = seurat_rna, RNA3 = 'RNA')
 
-SaveH5Seurat(seurat_rna, filename = glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"))
-Convert(glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"), dest = "h5ad")
+# SaveH5Seurat(seurat_rna, filename = glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"))
+# Convert(glue("{result_folder}hESC_EZH2i_scRNA_Seq.h5Seurat"), dest = "h5ad")
 
 # marker analysis
 tlc_vs_elc = FindMarkers(seurat_rna,
@@ -570,5 +575,3 @@ ggsave(
   height = 7,
   dpi = 300,
 )
-
-x =seurat_rna@meta.data

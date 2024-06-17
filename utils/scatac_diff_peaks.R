@@ -58,7 +58,8 @@ marker_analysis = function(cluster, reference) {
   return(output)
 }
 
-x = marker_analysis(cluster = "TLC", reference = NULL) 
+# diff_ga = marker_analysis(cluster = "MeLC", reference = NULL) 
+# diff_ga %>% write_tsv(., glue("{result_folder}Diff_GA-LR_test-MeLC_vs_all-Chens_annotation.tsv"))
 
 marker_analysis(cluster = "gELC", reference = "aELC") %>% write_tsv(.,
           glue("{result_folder}Diff_peak-LR_test-gELC_vs_aELC-Chens_annotation.tsv"))
@@ -93,6 +94,16 @@ active_elc_closed = active_elc %>% dplyr::filter(avg_log2FC < -1 & p_val_adj < 0
   separate(name, into = c("V1","V2","V3"), sep = "-") %>% 
   dplyr::select(V1, V2, V3) %>% 
   write_tsv(glue("{result_folder}aELC_spec_peaks_down-log2fc_1_adjp0.05_Chens_annotation.bed"), col_names = FALSE)
+
+ground_elc = fread("../results/Seurat_integration/scATAC_annotation/Diff_peak-LR_test-gELC_vs_all-Chens_annotation.tsv")
+ground_elc_opened = ground_elc %>% dplyr::filter(avg_log2FC > 1 & p_val_adj < 0.05) %>% 
+  separate(name, into = c("V1","V2","V3"), sep = "-") %>% 
+  dplyr::select(V1, V2, V3) %>% 
+  write_tsv(glue("{result_folder}gELC_spec_peaks_up-log2fc_1_adjp0.05_Chens_annotation.bed"), col_names = FALSE)
+ground_elc_closed = ground_elc %>% dplyr::filter(avg_log2FC < -1 & p_val_adj < 0.05) %>% 
+  separate(name, into = c("V1","V2","V3"), sep = "-") %>% 
+  dplyr::select(V1, V2, V3) %>% 
+  write_tsv(glue("{result_folder}gELC_spec_peaks_down-log2fc_1_adjp0.05_Chens_annotation.bed"), col_names = FALSE)
 
 # genome browsing
 # coverage plot function

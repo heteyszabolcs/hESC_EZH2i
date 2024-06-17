@@ -18,6 +18,7 @@ result_folder = "../results/Seurat_integration/scATAC_annotation/"
 # input data
 # bulk ATAC signals
 bigwigs = list.files("../data/bulk_ATAC-Seq/KO_experiments/bigwig/", full.names = TRUE)
+pgl_bigwigs = list.files("../data/bulk_ATAC-Seq/IWP2_ChIR_EZH2i/bigwig/", full.names = TRUE)
 # scATAC peaks
 tlc_peaks = "../results/Seurat_integration/scATAC_annotation/cluster_peaks/TLC_spec_peaks_up-log2fc_2_adjp0.05_Chens_annotation.bed"
 melc_peaks = "../results/Seurat_integration/scATAC_annotation/cluster_peaks/MeLC_spec_peaks_up-log2fc_2_adjp0.05_Chens_annotation.bed"
@@ -30,7 +31,7 @@ aggr_signal = function(bigwigs, bed) {
   return(output)
 }
 
-# visualizations of MeLC and TLC peaks of EZH2i scATAC-Seq
+## visualizations of peak signals of EZH2i scATAC-Seq
 tlc = aggr_signal(bigwigs = bigwigs, bed = tlc_peaks)
 tlc = tlc %>% mutate(peak = paste(seqnames, as.character(start), as.character(end), sep = "-")) %>%
   dplyr::select(-width, -strand, -seqnames, -start, -end)
@@ -49,6 +50,16 @@ aelc = aelc %>% mutate(peak = paste(seqnames, as.character(start), as.character(
 rownames(aelc) = aelc$peak
 aelc_mat = aelc %>% dplyr::select(-peak) %>% as.matrix
 
+melc_pgl = aggr_signal(bigwigs = pgl_bigwigs, bed = melc_peaks)
+melc_pgl = melc_pgl %>% mutate(peak = paste(seqnames, as.character(start), as.character(end), sep = "-")) %>%
+  dplyr::select(-width, -strand, -seqnames, -start, -end)
+
+tlc_pgl = aggr_signal(bigwigs = pgl_bigwigs, bed = tlc_peaks)
+tlc_pgl = tlc_pgl %>% mutate(peak = paste(seqnames, as.character(start), as.character(end), sep = "-")) %>%
+  dplyr::select(-width, -strand, -seqnames, -start, -end)
+
+# scatterplots
+# bulk signals over scATAC peaks
 sc_melc = melc %>% mutate(cell_type = "MeLC") %>% 
   dplyr::select(cell_type, everything()) %>% 
   pivot_longer(., names_to = "ko", values_to = "agg_sign", 
@@ -67,7 +78,18 @@ sc_aelc = aelc %>% mutate(cell_type = "aELC") %>%
                cols = starts_with("ATAC")) %>% 
   dplyr::select(-peak) %>% 
   group_by(cell_type, ko) %>% summarise(mean = mean(agg_sign), sd = sd(agg_sign))
-
+sc_melc_pgl = melc_pgl %>% mutate(cell_type = "MeLC") %>% 
+  dplyr::select(cell_type, everything()) %>% 
+  pivot_longer(., names_to = "ko", values_to = "agg_sign", 
+               cols = starts_with("ATAC")) %>% 
+  dplyr::select(-peak) %>% 
+  group_by(cell_type, ko) %>% summarise(mean = mean(agg_sign), sd = sd(agg_sign))
+sc_tlc_pgl = tlc_pgl %>% mutate(cell_type = "TLC") %>% 
+  dplyr::select(cell_type, everything()) %>% 
+  pivot_longer(., names_to = "ko", values_to = "agg_sign", 
+               cols = starts_with("ATAC")) %>% 
+  dplyr::select(-peak) %>% 
+  group_by(cell_type, ko) %>% summarise(mean = mean(agg_sign), sd = sd(agg_sign))
 
 sc_input = rbind(sc_tlc, sc_melc) %>% pivot_wider(., names_from = cell_type, values_from = mean,
                                                   id_cols = ko) %>% 
@@ -104,7 +126,46 @@ ggsave(
   height = 6
 )
 
+sc_input_pgl = rbind(sc_tlc_pgl, sc_melc_pgl) %>%
+  pivot_wider(.,
+              names_from = cell_type,
+              values_from = mean,
+              id_cols = ko) %>%
+  separate(ko, sep = "ATAC_", into = c("rest", "ko")) %>%
+  separate(ko, sep = ".mRp.clN.uniq", into = c("ko", "rest")) %>%
+  dplyr::select(-rest)
 
+ggplot(sc_input_pgl, aes(x = TLC, y = MeLC, color = ko)) +
+  geom_point(size = 7) +
+  scale_color_brewer(palette = "Set3") +
+  labs(
+    title = "mean bulk ATAC signals (PGL) over peak sets.",
+    x = "TLC",
+    y = "MeLC",
+    color = " "
+  ) +
+  xlim(0,7) +
+  ylim(0,4) +
+  theme_classic() +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 12),
+    axis.text.x = element_text(size = 12, color = "black"),
+    axis.text.y = element_text(size = 12, color = "black"))
+ggsave(
+  glue("{result_folder}mean_bulkATAC_PGL_over_peaksets.png"),
+  width = 6,
+  height = 6,
+  dpi = 500,
+)
+ggsave(
+  glue("{result_folder}mean_bulkATAC_PGL_over_peaksets.pdf"),
+  width = 6,
+  height = 6
+)
+
+# heatmap
+# bulk ATAC signals over scATAC peaks
 png(
   file = glue("{result_folder}TLC_spec_peaks_Chens-KO_exp_signals.png"),
   width = 8,
