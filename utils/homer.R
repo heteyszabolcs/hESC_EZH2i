@@ -13,14 +13,30 @@ pacman::p_load(
 # output folder
 result_folder = "../results/HOMER/"
 
+# helper function: process HOMER knownResults output
 clean_homer_result = function(dirs, label) {
   homer_results = list()
-  for (dir in list.dirs(dirs)) {
-    if (file.exists(glue("{dir}/knownResults.txt"))) {
-      tf = str_split(dir, dirs)[[1]][2]
+  for (i in list.dirs(dirs)) {
+    print(i)
+    if (!file.exists(glue("{i}/knownResults.txt"))) {
+      next
+    }
+    else {
+      tf = str_split(i, dirs)[[1]][2]
+      
+      if (tf == "") {
+        next
+      }
+      
       tf_name = str_split(tf, "_CnT")[[1]][1]
-      homer_res = glue("{dir}/knownResults.txt")
+      homer_res = glue("{i}/knownResults.txt")
       homer_res = fread(homer_res)
+      
+      if (colnames(homer_res)[1] != "Motif Name") {
+        print("That's not HOMER output!")
+        next
+      }
+      
       homer_res = homer_res %>% mutate(`% of Target Sequences with Motif` =
                                          as.numeric(str_remove(
                                            `% of Target Sequences with Motif`, "%"
@@ -36,9 +52,9 @@ clean_homer_result = function(dirs, label) {
                       `P-value`,
                       `Log P-value`,
                       pct_of_target_seq_with_motif =
-                        `% of Target Sequences with Motif`) %>% 
-        arrange(desc(pct_of_target_seq_with_motif)) %>% 
-        mutate(sample = label) %>% 
+                        `% of Target Sequences with Motif`) %>%
+        arrange(desc(pct_of_target_seq_with_motif)) %>%
+        mutate(sample = label) %>%
         mutate(tf = tf_name)
     }
     homer_results[[tf]] = homer_res
@@ -46,8 +62,9 @@ clean_homer_result = function(dirs, label) {
   return(homer_results)
 }
 
-non_trt = clean_homer_result("../results/HOMER/bulk_CnT/non_trt/", label = "NT")
-trt = clean_homer_result("../results/HOMER/bulk_CnT/EZH2i_7D//", label = "EZH2i 7D")
+# bulk TF Cut&Tag HOMER outputs
+non_trt = clean_homer_result(dirs = "../results/HOMER/bulk_CnT/non_trt/", label = "NT")
+trt = clean_homer_result(dirs = "../results/HOMER/bulk_CnT/EZH2i_7D/", label = "EZH2i 7D")
 
 non_trt = rbindlist(non_trt)
 non_trt = non_trt %>% mutate(minuslog10p_value = -log10(as.numeric(`P-value`)))
@@ -55,7 +72,7 @@ non_trt = non_trt %>% mutate(minuslog10p_value = -log10(as.numeric(`P-value`)))
 trt = rbindlist(trt)
 trt = trt %>% mutate(minuslog10p_value = -log10(as.numeric(`P-value`)))
 
-# non trt circle heatmap plot
+# non-treated circle heatmap plot
 y_order_non_trt = non_trt %>% group_by(Motif_name) %>% 
   summarise(mean_pct = mean(pct_of_target_seq_with_motif)) %>% 
   arrange(mean_pct) %>% pull(Motif_name)
@@ -95,6 +112,7 @@ ggsave(
   plot = nt_hm
 )
 
+# EZH2i 7D circle heatmap plot
 y_order_trt = trt %>% group_by(Motif_name) %>% 
   summarise(mean_pct = mean(pct_of_target_seq_with_motif)) %>% 
   arrange(mean_pct) %>% pull(Motif_name)

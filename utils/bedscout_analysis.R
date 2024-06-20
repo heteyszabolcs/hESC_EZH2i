@@ -16,8 +16,7 @@ pacman::p_load(
 # output folder
 result_folder = "../results/bulk_ATAC-Seq/"
 
-# helper function
-# making GenomicRanges object
+# helper function: making GenomicRanges object
 make_gr = function(path_to_bed, name) {
   bed = fread(path_to_bed)
   bed$V6 = name
@@ -31,7 +30,7 @@ make_gr = function(path_to_bed, name) {
   )
 }
 
-## create GRanges objects
+# create GRanges objects
 CDX1 =
   make_gr(path_to_bed = "../data/bulk_ATAC-Seq/KO_experiments/MACS2/ATAC_CDX1_hESC_KO_EZH2i.mRp.clN_peaks.broadPeak", name = "CDX1_KO")
 CDX2 =
